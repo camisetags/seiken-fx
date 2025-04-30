@@ -102,17 +102,15 @@ export const tryCatch = <E, A>(f: () => A, onError: (error: unknown) => E): Resu
 
 export const fromPromise = <E, A>(
   promise: Promise<A>,
-  onError: (error: unknown) => E
+  onError: (error: unknown) => E,
 ): Promise<Result<E, A>> => {
-  return promise
-    .then((value) => success(value))
-    .catch((error) => failure(onError(error)));
+  return promise.then(value => success(value)).catch(error => failure(onError(error)));
 };
 
 // Combinators
-export const all = <E, A>(results: Result<E, A>[]): Result<E, A[]> => {
-  const values: A[] = [];
-  
+export const all = <E, A>(results: readonly Result<E, A>[]): Result<E, readonly A[]> => {
+  const values: readonly A[] = [];
+
   for (const result of results) {
     if (result.isFailure()) {
       return result as Result<E, never>;
@@ -121,6 +119,6 @@ export const all = <E, A>(results: Result<E, A>[]): Result<E, A[]> => {
       values.push(result.value);
     }
   }
-  
+
   return success(values);
 };
