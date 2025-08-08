@@ -39,6 +39,10 @@ class Success<A> {
   getOrThrow(): A {
     return this.value;
   }
+
+  unwrap(): [A, null] {
+    return [this.value, null];
+  }
 }
 
 class Failure<E> {
@@ -80,6 +84,10 @@ class Failure<E> {
   getOrThrow(): never {
     throw this.error;
   }
+
+  unwrap(): [null, E] {
+    return [null, this.error];
+  }
 }
 
 // Constructors
@@ -102,9 +110,22 @@ export const tryCatch = <E, A>(f: () => A, onError: (error: unknown) => E): Resu
 
 export const fromPromise = <E, A>(
   promise: Promise<A>,
-  onError: (error: unknown) => E,
-): Promise<Result<E, A>> => {
-  return promise.then(value => success(value)).catch(error => failure(onError(error)));
+  onError?: (error: unknown) => E,
+): Promise<Result<E | Error, A>> => {
+  if (onError) {
+    return promise.then(value => success(value)).catch(error => failure(onError(error)));
+  }
+  return promise
+    .then(value => success(value))
+    .catch(error => failure(error instanceof Error ? error : new Error(String(error))));
+};
+
+// Helper that returns tuple for Elixir-style destructuring
+export const fromPromiseTuple = async <A>(
+  promise: Promise<A>,
+): Promise<[A | null, Error | null]> => {
+  const result = await fromPromise(promise);
+  return result.unwrap() as [A | null, Error | null];
 };
 
 // Combinators

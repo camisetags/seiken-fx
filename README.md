@@ -73,21 +73,9 @@ const len = length([1, 2, 3]);
 
 ### Composition Utilities
 
-#### Basic composition
+#### Currying
 
 ```typescript
-// Compose functions (right to left)
-const add5 = (x: number) => x + 5;
-const multiply2 = (x: number) => x * 2;
-const subtract3 = (x: number) => x - 3;
-
-const composed = compose(add5, multiply2, subtract3);
-composed(10); // ((10 - 3) * 2) + 5 = 19
-
-// Pipe functions (left to right)
-const piped = pipe(subtract3, multiply2, add5);
-piped(10); // Same result: 19
-
 // Currying
 const add = (a: number, b: number, c: number) => a + b + c;
 const curriedAdd = curry(add);
@@ -96,7 +84,7 @@ curriedAdd(1)(2)(3); // 6
 curriedAdd(1, 2)(3); // 6
 ```
 
-#### Result-based composition
+#### Composition
 
 ```typescript
 // Functions that may fail
@@ -107,7 +95,7 @@ const getUser = (obj: any): Result<string, { name: string }> =>
   obj && obj.name ? success({ name: obj.name }) : failure("No user found");
 
 // Compose with error handling
-const getUserFromJSON = composeResult(getUser, parseJSON);
+const getUserFromJSON = compose(getUser, parseJSON);
 
 getUserFromJSON('{"name": "John"}'); // Success({ name: "John" })
 getUserFromJSON('{"age": 30}'); // Failure("No user found")
@@ -127,7 +115,7 @@ const fetchData = async (url: string): Promise<Result<Error, any>> => {
 const processData = (data: any): Result<string, string> => 
   data ? success(`Processed: ${data}`) : failure("Invalid data");
 
-const fetchAndProcess = pipeAsyncResult(fetchData, processData);
+const fetchAndProcess = pipeAsync(fetchData, processData);
 ```
 
 ### Object Utilities
@@ -208,12 +196,65 @@ const asyncResult = await fromPromise(
   err => new Error(`Network error: ${err}`)
 );
 
+// Work with Promises the Elixir way (returns tuple directly)
+const [data, error] = await fromPromiseTuple(
+  fetch('https://api.example.com/data')
+);
+
+if (error) {
+  console.error('Network error:', error);
+} else {
+  console.log('Data received:', data);
+}
+
 // Combine multiple Results
 const results = [success(1), success(2), success(3)];
 const combined = all(results); // Success([1, 2, 3])
 
 const withFailure = [success(1), failure("Oops"), success(3)];
 const failedCombine = all(withFailure); // Failure("Oops")
+```
+
+### Destructuring (Elixir-style)
+
+For those who prefer a more direct approach similar to Elixir's pattern matching, the library provides tuple destructuring methods:
+
+```typescript
+// Destructure Results directly into tuples
+const successResult = success(42);
+const [value, error] = successResult.unwrap();
+// value = 42, error = null
+
+const failureResult = failure("Something went wrong");
+const [value2, error2] = failureResult.unwrap();
+// value2 = null, error2 = "Something went wrong"
+
+// Combine with async operations
+const [userData, fetchError] = await fromPromiseTuple(
+  fetch('/api/user/123')
+);
+
+if (fetchError) {
+  console.error('Failed to fetch user:', fetchError);
+  return;
+}
+
+// Continue with userData...
+console.log('User data:', userData);
+
+// Mix both approaches
+const parseResult = tryCatch(
+  () => JSON.parse(userResponse),
+  err => new Error('Invalid JSON')
+);
+
+const [data, parseError] = parseResult.unwrap();
+if (parseError) {
+  console.error('Parse error:', parseError);
+} else {
+  console.log('Parsed data:', data);
+}
+```
 ```
 
 ## Practical Examples
@@ -264,7 +305,7 @@ const validateUser = (user: any): Result<string, any> =>
 const formatUser = (user: any): Result<never, string> =>
   success(`${user.name} (${user.id})`);
 
-const processUser = pipeAsyncResult(
+const processUser = pipeAsync(
   fetchUserData,
   validateUser,
   formatUser
