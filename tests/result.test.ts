@@ -31,26 +31,26 @@ describe('Result utilities', () => {
 
     it('should not affect Failure', () => {
       const error = new Error('error');
-      const result = failure<Error, number>(error).map(x => x * 2);
+      const result = failure<Error>(error).map(x => x * 2);
       expect(result.isFailure()).toBe(true);
     });
   });
 
   describe('flatMap', () => {
     it('should chain Success computations', () => {
-      const divide = (a: number, b: number): Result<string, number> => 
+      const divide = (a: number, b: number): Result<string, number> =>
         b === 0 ? failure('Division by zero') : success(a / b);
-      
+
       const result = success(10).flatMap(x => divide(x, 2));
       expect(result.getOrElse(0)).toBe(5);
     });
 
     it('should not apply function to Failure', () => {
-      const divide = (a: number, b: number): Result<string, number> => 
+      const divide = (a: number, b: number): Result<string, number> =>
         b === 0 ? failure('Division by zero') : success(a / b);
-      
+
       const error = 'Initial error';
-      const result = failure<string, number>(error).flatMap(x => divide(x, 2));
+      const result = failure<string>(error).flatMap(x => divide(x, 2));
       expect(result.isFailure()).toBe(true);
       expect((result as any).error).toBe(error);
     });
@@ -73,14 +73,14 @@ describe('Result utilities', () => {
 
   describe('recover', () => {
     it('should recover from Failure', () => {
-      const result = failure<string, number>('error').recover(e => e.length);
+      const result = failure<string>('error').recover(e => e.length);
       expect(result.isSuccess()).toBe(true);
       expect(result.getOrElse(0)).toBe(5); // 'error' has length 5
     });
 
     it('should not affect Success', () => {
       const value = 42;
-      const result = success<number>(value).recover(e => 0);
+      const result = success<number>(value).recover(_e => 0);
       expect(result.isSuccess()).toBe(true);
       expect(result.getOrElse(0)).toBe(value);
     });
@@ -90,7 +90,7 @@ describe('Result utilities', () => {
     it('should apply onSuccess function to Success', () => {
       const result = success(5).fold(
         e => `Error: ${e}`,
-        v => `Value: ${v}`
+        v => `Value: ${v}`,
       );
       expect(result).toBe('Value: 5');
     });
@@ -98,7 +98,7 @@ describe('Result utilities', () => {
     it('should apply onFailure function to Failure', () => {
       const result = failure('error').fold(
         e => `Error: ${e}`,
-        v => `Value: ${v}`
+        v => `Value: ${v}`,
       );
       expect(result).toBe('Error: error');
     });
@@ -108,7 +108,7 @@ describe('Result utilities', () => {
     it('should return Success for successful computation', () => {
       const result = tryCatch(
         () => 42,
-        err => `Unexpected error: ${err}`
+        err => `Unexpected error: ${err}`,
       );
       expect(result.isSuccess()).toBe(true);
       expect(result.getOrElse(0)).toBe(42);
@@ -116,8 +116,10 @@ describe('Result utilities', () => {
 
     it('should return Failure for failed computation', () => {
       const result = tryCatch(
-        () => { throw new Error('boom!'); },
-        err => `Caught error: ${(err as Error).message}`
+        () => {
+          throw new Error('boom!');
+        },
+        err => `Caught error: ${(err as Error).message}`,
       );
       expect(result.isFailure()).toBe(true);
       expect((result as any).error).toBe('Caught error: boom!');
@@ -127,20 +129,14 @@ describe('Result utilities', () => {
   describe('fromPromise', () => {
     it('should convert resolved Promise to Success', async () => {
       const promise = Promise.resolve(42);
-      const result = await fromPromise(
-        promise,
-        err => `Promise error: ${err}`
-      );
+      const result = await fromPromise(promise, err => `Promise error: ${err}`);
       expect(result.isSuccess()).toBe(true);
       expect(result.getOrElse(0)).toBe(42);
     });
 
     it('should convert rejected Promise to Failure', async () => {
       const promise = Promise.reject(new Error('rejected'));
-      const result = await fromPromise(
-        promise,
-        err => `Promise error: ${(err as Error).message}`
-      );
+      const result = await fromPromise(promise, err => `Promise error: ${(err as Error).message}`);
       expect(result.isFailure()).toBe(true);
       expect((result as any).error).toBe('Promise error: rejected');
     });
@@ -148,11 +144,7 @@ describe('Result utilities', () => {
 
   describe('all', () => {
     it('should combine all Success values into a single Success', () => {
-      const results: Result<string, number>[] = [
-        success(1),
-        success(2),
-        success(3)
-      ];
+      const results: Result<string, number>[] = [success(1), success(2), success(3)];
       const combined = all(results);
       expect(combined.isSuccess()).toBe(true);
       expect(combined.getOrElse([])).toEqual([1, 2, 3]);
@@ -160,11 +152,7 @@ describe('Result utilities', () => {
 
     it('should return first Failure when any Result is a Failure', () => {
       const error = 'Second item failed';
-      const results: Result<string, number>[] = [
-        success(1),
-        failure(error),
-        success(3)
-      ];
+      const results: Result<string, number>[] = [success(1), failure(error), success(3)];
       const combined = all(results);
       expect(combined.isFailure()).toBe(true);
       expect((combined as any).error).toBe(error);

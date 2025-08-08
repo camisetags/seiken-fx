@@ -1,5 +1,7 @@
 import typescript from 'rollup-plugin-typescript2';
-import pkg from './package.json' assert { type: 'json' };
+import { readFileSync } from 'fs';
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 export default {
   input: 'src/index.ts',
@@ -21,6 +23,11 @@ export default {
     typescript({
       useTsconfigDeclarationDir: true,
       tsconfigOverride: {
+        compilerOptions: {
+          declaration: true,
+          declarationDir: 'dist',
+          rootDir: 'src',
+        },
         exclude: ['**/*.test.ts', 'tests'],
       },
     }),

@@ -5,27 +5,27 @@ describe('Object utilities', () => {
     name: 'John',
     age: 30,
     city: 'New York',
-    country: 'USA'
+    country: 'USA',
   };
 
   describe('prop', () => {
     it('should extract a property from an object', () => {
-      const getName = prop('name');
+      const getName = prop<typeof testObj, 'name'>('name');
       expect(getName(testObj)).toBe('John');
     });
 
     it('should handle undefined properties', () => {
-      const getUnknown = prop('unknown' as any);
+      const getUnknown = prop<any, any>('unknown' as any);
       expect(getUnknown(testObj)).toBeUndefined();
     });
   });
 
   describe('pick', () => {
     it('should pick specific properties from an object', () => {
-      const pickNameAndAge = pick(['name', 'age']);
+      const pickNameAndAge = pick<typeof testObj, 'name' | 'age'>(['name', 'age']);
       expect(pickNameAndAge(testObj)).toEqual({
         name: 'John',
-        age: 30
+        age: 30,
       });
     });
 
@@ -37,15 +37,15 @@ describe('Object utilities', () => {
 
   describe('omit', () => {
     it('should omit specific properties from an object', () => {
-      const omitNameAndAge = omit(['name', 'age']);
+      const omitNameAndAge = omit<typeof testObj, 'name' | 'age'>(['name', 'age']);
       expect(omitNameAndAge(testObj)).toEqual({
         city: 'New York',
-        country: 'USA'
+        country: 'USA',
       });
     });
 
     it('should handle empty key array', () => {
-      const omitNothing = omit([]);
+      const omitNothing = omit<typeof testObj, never>([]);
       expect(omitNothing(testObj)).toEqual(testObj);
     });
   });

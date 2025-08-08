@@ -24,7 +24,7 @@ export const tail = <T>(arr: readonly T[]): readonly T[] => arr.slice(1);
 export const mapResult =
   <T, U, E>(fn: (x: T) => Result<E, U>) =>
   (arr: readonly T[]): Result<E, readonly U[]> => {
-    const results: readonly Result<E, U>[] = [];
+    const results: Result<E, U>[] = [];
 
     for (const item of arr) {
       const result = fn(item);
@@ -40,7 +40,7 @@ export const mapResult =
 export const filterResult =
   <T, E>(predicate: (x: T) => Result<E, boolean>) =>
   (arr: readonly T[]): Result<E, readonly T[]> => {
-    const filtered: readonly T[] = [];
+    const filtered: T[] = [];
 
     for (const item of arr) {
       const result = predicate(item);

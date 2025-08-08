@@ -16,7 +16,7 @@ export const curry = (fn: (...args1: any[]) => any) => {
       return fn.apply(this, args2);
     }
     return function (this: any, ...moreArgs: readonly any[]) {
-      return curried.apply(this, args.concat(moreArgs));
+      return curried.apply(this, args2.concat(moreArgs));
     };
   };
 };

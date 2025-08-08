@@ -1,12 +1,12 @@
 import { Result, success, failure } from './result';
 
 export const prop =
-  <T, K extends keyof T>(key: K) =>
+  <T extends object, K extends keyof T>(key: K) =>
   (obj: T): T[K] =>
     obj[key];
 
 export const pick =
-  <T, K extends keyof T>(keys: readonly K[]) =>
+  <T extends object, K extends keyof T>(keys: readonly K[]) =>
   (obj: T): Pick<T, K> =>
     keys.reduce((acc, key) => ({ ...acc, [key]: obj[key] }), {} as Pick<T, K>);
 

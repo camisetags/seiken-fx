@@ -1,4 +1,4 @@
-import { mapResult, filterResult, reduceResult, headResult, tailResult, safeArrayOp } from '../src/array';
+import { mapResult, filterResult, headResult } from '../src/array';
 import { success, failure } from '../src/result';
 
 describe('Array Result utilities', () => {
@@ -11,11 +11,8 @@ describe('Array Result utilities', () => {
     });
 
     it('should return first failure', () => {
-      const maybeDouble = (x: number) => 
-        x === 2 
-          ? failure(`Cannot double ${x}`) 
-          : success(x * 2);
-      
+      const maybeDouble = (x: number) => (x === 2 ? failure(`Cannot double ${x}`) : success(x * 2));
+
       const result = mapResult(maybeDouble)([1, 2, 3]);
       expect(result.isFailure()).toBe(true);
       expect((result as any).error).toBe('Cannot double 2');
@@ -31,11 +28,9 @@ describe('Array Result utilities', () => {
     });
 
     it('should return first failure', () => {
-      const isEven = (x: number) => 
-        x === 3 
-          ? failure(`Cannot check if ${x} is even`) 
-          : success(x % 2 === 0);
-      
+      const isEven = (x: number) =>
+        x === 3 ? failure(`Cannot check if ${x} is even`) : success(x % 2 === 0);
+
       const result = filterResult(isEven)([1, 2, 3, 4]);
       expect(result.isFailure()).toBe(true);
       expect((result as any).error).toBe('Cannot check if 3 is even');

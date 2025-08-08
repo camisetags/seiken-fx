@@ -28,7 +28,7 @@ class Success<A> {
     return this;
   }
 
-  fold<B>(onFailure: (_: never) => B, onSuccess: (a: A) => B): B {
+  fold<B>(_onFailure: (_: never) => B, onSuccess: (a: A) => B): B {
     return onSuccess(this.value);
   }
 
@@ -109,7 +109,7 @@ export const fromPromise = <E, A>(
 
 // Combinators
 export const all = <E, A>(results: readonly Result<E, A>[]): Result<E, readonly A[]> => {
-  const values: readonly A[] = [];
+  const values: A[] = [];
 
   for (const result of results) {
     if (result.isFailure()) {
