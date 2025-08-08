@@ -1,27 +1,7 @@
-import { Result, success, failure, tryCatch } from './result';
+import { Result, success, failure } from './result';
 
-// Original functions
+// Result-based array functions for safe functional programming
 export const map =
-  <T, U>(fn: (x: T) => U) =>
-  (arr: readonly T[]): readonly U[] =>
-    arr.map(fn);
-
-export const filter =
-  <T>(predicate: (x: T) => boolean) =>
-  (arr: readonly T[]): readonly T[] =>
-    arr.filter(predicate);
-
-export const reduce =
-  <T, U>(fn: (acc: U, curr: T) => U, initial: U) =>
-  (arr: readonly T[]): U =>
-    arr.reduce(fn, initial);
-
-export const head = <T>(arr: readonly T[]): T | undefined => arr[0];
-
-export const tail = <T>(arr: readonly T[]): readonly T[] => arr.slice(1);
-
-// Result-based versions
-export const mapResult =
   <T, U, E>(fn: (x: T) => Result<E, U>) =>
   (arr: readonly T[]): Result<E, readonly U[]> => {
     const results: Result<E, U>[] = [];
@@ -37,7 +17,7 @@ export const mapResult =
     return success(results.map(r => (r as any).value));
   };
 
-export const filterResult =
+export const filter =
   <T, E>(predicate: (x: T) => Result<E, boolean>) =>
   (arr: readonly T[]): Result<E, readonly T[]> => {
     const filtered: T[] = [];
@@ -57,7 +37,7 @@ export const filterResult =
     return success(filtered);
   };
 
-export const reduceResult =
+export const reduce =
   <T, U, E>(fn: (acc: U, curr: T) => Result<E, U>, initial: U) =>
   (arr: readonly T[]): Result<E, U> => {
     let acc: U = initial;
@@ -73,21 +53,33 @@ export const reduceResult =
     return success(acc);
   };
 
-export const headResult = <T, E>(arr: readonly T[], errorFn: () => E): Result<E, T> => {
+export const head = <T, E>(arr: readonly T[], errorFn: () => E): Result<E, T> => {
   if (arr.length === 0) {
     return failure(errorFn());
   }
   return success(arr[0]);
 };
 
-export const tailResult = <T>(arr: readonly T[]): Result<never, readonly T[]> => {
+export const tail = <T>(arr: readonly T[]): Result<never, readonly T[]> => {
   return success(arr.slice(1));
 };
 
-export const safeArrayOp =
-  <T, U>(fn: (arr: readonly T[]) => U): ((arr: readonly T[]) => Result<Error, U>) =>
-  arr =>
-    tryCatch(
-      () => fn(arr),
-      e => (e instanceof Error ? e : new Error(String(e))),
-    );
+// Safely access array elements by index
+export const get =
+  <T, E>(index: number, errorFn: (index: number) => E) =>
+  (arr: readonly T[]): Result<E, T> => {
+    if (index < 0 || index >= arr.length) {
+      return failure(errorFn(index));
+    }
+    return success(arr[index]);
+  };
+
+// Check if array is empty
+export const isEmpty = <T>(arr: readonly T[]): Result<never, boolean> => {
+  return success(arr.length === 0);
+};
+
+// Get array length safely
+export const length = <T>(arr: readonly T[]): Result<never, number> => {
+  return success(arr.length);
+};

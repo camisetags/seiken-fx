@@ -22,46 +22,53 @@ The core of our error handling is the `Result<E, A>` type, which represents eith
 
 ### Array Utilities
 
-#### Basic functions
+All array functions in seiken-fx use the Result type for safe, functional operations that handle errors explicitly.
 
 ```typescript
-// Transform each element in an array
-const doubled = map(x => x * 2)([1, 2, 3]); // [2, 4, 6]
+// Safe parsing function  
+const safeParse = (x: string): Result<string, number> => {
+  const num = parseInt(x);
+  return isNaN(num) ? failure("Not a number") : success(num);
+};
 
-// Filter array elements
-const evens = filter(x => x % 2 === 0)([1, 2, 3, 4]); // [2, 4]
+// Transform each element safely
+const result = map(safeParse)(['1', '2', '3']);
+// result is Success([1, 2, 3])
 
-// Reduce array to a single value
-const sum = reduce((acc, x) => acc + x, 0)([1, 2, 3, 4]); // 10
+const badResult = map(safeParse)(['1', 'invalid', '3']);
+// badResult is Failure("Not a number")
 
-// Get the first element
-const first = head([1, 2, 3]); // 1
+// Filter with safe predicates
+const safeIsEven = (x: number) => success(x % 2 === 0);
+const evens = filter(safeIsEven)([1, 2, 3, 4]);
+// evens is Success([2, 4])
 
-// Get all elements except the first
-const rest = tail([1, 2, 3]); // [2, 3]
-```
+// Safe reduction
+const safeSum = (acc: number, curr: number) => success(acc + curr);
+const sum = reduce(safeSum, 0)([1, 2, 3, 4]);
+// sum is Success(10)
 
-#### Result-based array functions
+// Safe array access
+const first = head([1, 2, 3], () => "Empty array");
+// first is Success(1)
 
-```typescript
-// Safe division function
-const safeDivide = (x: number) => (y: number): Result<string, number> => 
-  y === 0 ? failure("Division by zero") : success(x / y);
-
-// Apply to each element, handling errors
-const results = mapResult(safeDivide(10))([2, 5, 0, 4]);
-// results is Failure("Division by zero")
-
-// With all valid inputs
-const goodResults = mapResult(safeDivide(10))([2, 5, 8]);
-// goodResults is Success([5, 2, 1.25])
-
-// Get first element safely
-const maybeFirst = headResult([1, 2, 3], () => "Empty array");
-// maybeFirst is Success(1)
-
-const emptyFirst = headResult([], () => "Empty array");
+const emptyFirst = head([], () => "Empty array");
 // emptyFirst is Failure("Empty array")
+
+// Get remaining elements
+const rest = tail([1, 2, 3]);
+// rest is Success([2, 3])
+
+// Safe element access by index
+const element = get(1, (i) => `Index ${i} out of bounds`)([10, 20, 30]);
+// element is Success(20)
+
+// Utility functions
+const empty = isEmpty([]);
+// empty is Success(true)
+
+const len = length([1, 2, 3]);
+// len is Success(3)
 ```
 
 ### Composition Utilities
