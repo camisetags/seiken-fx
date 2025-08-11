@@ -8,38 +8,81 @@ class Success<A> {
   readonly _tag: 'Success' = 'Success';
   constructor(readonly value: A) {}
 
+  /**
+   * Type guard to check if this Result is a Success.
+   * @returns true, as this is always a Success instance
+   */
   isSuccess(): this is Success<A> {
     return true;
   }
 
+  /**
+   * Type guard to check if this Result is a Failure.
+   * @returns false, as this is always a Success instance
+   */
   isFailure(): boolean {
     return false;
   }
 
+  /**
+   * Transforms the value inside this Success using the provided function.
+   * @param f Function to transform the value
+   * @returns A new Success containing the transformed value
+   */
   map<B>(f: (a: A) => B): Result<never, B> {
     return success(f(this.value));
   }
 
+  /**
+   * Chains this Success with another Result-producing function.
+   * @param f Function that takes the value and returns a Result
+   * @returns The Result returned by the function
+   */
   flatMap<E, B>(f: (a: A) => Result<E, B>): Result<E, B> {
     return f(this.value);
   }
 
+  /**
+   * Does nothing for Success since there's no error to transform.
+   * @param _f Function to transform the error (unused)
+   * @returns This Success instance unchanged
+   */
   mapError<E1>(_f: (e: never) => E1): Result<E1, A> {
     return this as unknown as Result<E1, A>;
   }
 
+  /**
+   * Does nothing for Success since there's no error to recover from.
+   * @param _f Function to recover from error (unused)
+   * @returns This Success instance unchanged
+   */
   recover<A1>(_f: (e: never) => A1): Result<never, A> {
     return this;
   }
 
+  /**
+   * Applies the onSuccess function to the value and returns the result.
+   * @param _onFailure Function to handle failure (unused)
+   * @param onSuccess Function to handle success
+   * @returns Result of applying onSuccess to the value
+   */
   fold<B>(_onFailure: (_: never) => B, onSuccess: (a: A) => B): B {
     return onSuccess(this.value);
   }
 
+  /**
+   * Returns the value, ignoring the default since this is a Success.
+   * @param _defaultValue Default value (unused)
+   * @returns The wrapped value
+   */
   getOrElse<A1>(_defaultValue: A1): A {
     return this.value;
   }
 
+  /**
+   * Returns the value since this is a Success (never throws).
+   * @returns The wrapped value
+   */
   getOrThrow(): A {
     return this.value;
   }
@@ -58,38 +101,81 @@ class Failure<E> {
   readonly _tag: 'Failure' = 'Failure';
   constructor(readonly error: E) {}
 
+  /**
+   * Type guard to check if this Result is a Success.
+   * @returns false, as this is always a Failure instance
+   */
   isSuccess(): boolean {
     return false;
   }
 
+  /**
+   * Type guard to check if this Result is a Failure.
+   * @returns true, as this is always a Failure instance
+   */
   isFailure(): this is Failure<E> {
     return true;
   }
 
+  /**
+   * Does nothing for Failure since there's no value to transform.
+   * @param _f Function to transform the value (unused)
+   * @returns This Failure instance unchanged
+   */
   map<B>(_f: (a: never) => B): Result<E, never> {
     return this as unknown as Result<E, never>;
   }
 
+  /**
+   * Does nothing for Failure since there's no value to chain with.
+   * @param _f Function to chain with (unused)
+   * @returns This Failure instance unchanged
+   */
   flatMap<E1, B>(_f: (a: never) => Result<E1, B>): Result<E | E1, never> {
     return this as unknown as Result<E, never>;
   }
 
+  /**
+   * Transforms the error inside this Failure using the provided function.
+   * @param f Function to transform the error
+   * @returns A new Failure containing the transformed error
+   */
   mapError<E1>(f: (e: E) => E1): Result<E1, never> {
     return failure(f(this.error));
   }
 
+  /**
+   * Recovers from this Failure by applying the function to the error.
+   * @param f Function that transforms the error into a success value
+   * @returns A Success containing the recovered value
+   */
   recover<A>(f: (e: E) => A): Result<never, A> {
     return success(f(this.error));
   }
 
+  /**
+   * Applies the onFailure function to the error and returns the result.
+   * @param onFailure Function to handle failure
+   * @param _onSuccess Function to handle success (unused)
+   * @returns Result of applying onFailure to the error
+   */
   fold<B>(onFailure: (e: E) => B, _onSuccess: (a: never) => B): B {
     return onFailure(this.error);
   }
 
+  /**
+   * Returns the default value since this is a Failure.
+   * @param defaultValue Default value to return
+   * @returns The provided default value
+   */
   getOrElse<A1>(defaultValue: A1): A1 {
     return defaultValue;
   }
 
+  /**
+   * Throws the wrapped error since this is a Failure.
+   * @throws The wrapped error
+   */
   getOrThrow(): never {
     throw this.error;
   }

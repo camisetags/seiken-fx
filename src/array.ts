@@ -108,12 +108,20 @@ export const get =
     return success(arr[index]);
   };
 
-// Check if array is empty
+/**
+ * Checks if an array is empty.
+ * @param arr The array to check
+ * @returns Success with true if empty, false otherwise
+ */
 export const isEmpty = <T>(arr: readonly T[]): Result<never, boolean> => {
   return success(arr.length === 0);
 };
 
-// Get array length safely
+/**
+ * Gets the length of an array safely.
+ * @param arr The array to get the length of
+ * @returns Success with the array length
+ */
 export const length = <T>(arr: readonly T[]): Result<never, number> => {
   return success(arr.length);
 };

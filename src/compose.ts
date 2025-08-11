@@ -80,22 +80,37 @@ export const pipeAsync =
     return result;
   };
 
+/**
+ * Interface for the curry function.
+ */
 export interface Curry {
   (fn: Function): (...args: readonly any[]) => any;
 }
 
+/**
+ * Interface for the compose function that chains Result-returning functions from right to left.
+ */
 export interface Compose<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Result<E, T>>): (initial: T) => Result<E, T>;
 }
 
+/**
+ * Interface for the pipe function that chains Result-returning functions from left to right.
+ */
 export interface Pipe<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Result<E, T>>): (initial: T) => Result<E, T>;
 }
 
+/**
+ * Interface for the composeAsync function that chains async Result-returning functions from right to left.
+ */
 export interface ComposeAsync<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Promise<Result<E, T>>>): (initial: T) => Promise<Result<E, T>>;
 }
 
+/**
+ * Interface for the pipeAsync function that chains async Result-returning functions from left to right.
+ */
 export interface PipeAsync<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Promise<Result<E, T>>>): (initial: T) => Promise<Result<E, T>>;
 }
