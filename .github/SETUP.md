@@ -23,6 +23,44 @@ No GitHub:
 
 Este token é fornecido automaticamente pelo GitHub Actions, não precisa configurar.
 
+## Permissões do Workflow
+
+Os workflows foram configurados com as permissões necessárias:
+
+```yaml
+permissions:
+  contents: write      # Criar releases e tags
+  packages: write      # Publicar pacotes
+  pull-requests: read  # Ler informações de PR
+  actions: read        # Ler informações de workflow
+  checks: write        # Escrever resultados de checks
+```
+
+## Solucionando Problemas Comuns
+
+### Erro de Permissão (403)
+
+Se você ver erros como:
+```
+remote: Permission to camisetags/seiken-fx.git denied to github-actions[bot].
+fatal: unable to access 'https://github.com/...': The requested URL returned error: 403
+```
+
+**Solução**: O workflow já foi corrigido com as permissões adequadas. Esse erro acontecia porque o GitHub Actions não tinha permissão para fazer push de tags.
+
+### NPM Publishing Falha
+
+1. Verifique se o secret `NPM_TOKEN` está configurado corretamente
+2. Confirme que o token tem permissões de "Automation"
+3. Verifique se a versão no package.json é maior que a última publicada
+
+### Verificações de Repositório
+
+1. Vá em **Settings** → **Actions** → **General**
+2. Em **Workflow permissions**, certifique-se que está selecionado:
+   - "Read and write permissions" ou
+   - "Read repository contents and packages permissions" com as permissões específicas configuradas no workflow
+
 ## Como o Pipeline Funciona
 
 ### CI (Continuous Integration)
