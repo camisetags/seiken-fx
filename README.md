@@ -368,7 +368,16 @@ const validNumbers = filter((str: string) => {
 
 ## 📦 Full API Reference
 
-[Continue with current API documentation...]
+**→ [Complete API Documentation](API_REFERENCE.md)**
+
+For detailed documentation of all functions, methods, and utilities, see our comprehensive API reference guide. It includes:
+
+- 🔥 **Result Core Functions** - `success`, `failure`, `tryCatch`, `all`
+- 🔧 **Result Methods** - `.map()`, `.flatMap()`, `.fold()`, `.unwrap()`
+- 📊 **Array Utilities** - `map`, `filter`, `reduce`, `head`, `tail`, `get`
+- 🎯 **Object Utilities** - `prop`, `pick`, `omit`, `getPath`, `mapValues`, `clone`
+- 🔄 **Function Composition** - `curry`, `compose`, `pipe`, `composeAsync`
+- 🌐 **Promise Integration** - `fromPromise`, `fromPromiseTuple`
 
 ---
 
