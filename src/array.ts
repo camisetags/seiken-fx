@@ -5,8 +5,34 @@ import { Result, success, failure } from './result';
  * If any transformation fails, returns the first failure encountered.
  * @param fn Function that transforms each element and may fail
  * @returns Function that takes an array and returns a Result of transformed array
+ *
+ * @example
+ * ```typescript
+ * // Type inference works automatically
+ * const numbers = [1, 2, 3];
+ * const doubled = map((n: number) => success(n * 2))(numbers);
+ *
+ * // Or with explicit typing
+ * const mapDouble = map<number, number, string>((n) => success(n * 2));
+ * ```
  */
-export const map =
+export function map<T, U, E>(
+  fn: (x: T) => Result<E, U>,
+): (arr: readonly T[]) => Result<E, readonly U[]>;
+export function map<T, U, E>(
+  fn: (x: T) => Result<E, U>,
+  arr: readonly T[],
+): Result<E, readonly U[]>;
+export function map<T, U, E>(fn: (x: T) => Result<E, U>, arr?: readonly T[]): any {
+  if (arr !== undefined) {
+    // Direct call with both arguments
+    return mapImpl(fn)(arr);
+  }
+  // Curried call
+  return mapImpl(fn);
+}
+
+const mapImpl =
   <T, U, E>(fn: (x: T) => Result<E, U>) =>
   (arr: readonly T[]): Result<E, readonly U[]> => {
     const results: Result<E, U>[] = [];
