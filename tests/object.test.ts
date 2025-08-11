@@ -195,10 +195,7 @@ describe('Object utilities', () => {
     });
 
     it('should handle empty path array', () => {
-      const getRoot = getPath<typeof nestedObj, string>(
-        [],
-        path => `Path not found: ${path}`,
-      );
+      const getRoot = getPath<typeof nestedObj, string>([], path => `Path not found: ${path}`);
       const result = getRoot(nestedObj);
 
       expect(result.isSuccess()).toBe(true);
