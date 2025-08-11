@@ -1,44 +1,12 @@
 import { Result, success, failure } from './result';
 
 /**
- * Gets a property value from an object.
- * @param key The property key to extract
- * @returns Function that takes an object and returns the property value
- */
-export const prop =
-  <T extends object, K extends keyof T>(key: K) =>
-  (obj: T): T[K] =>
-    obj[key];
-
-/**
- * Creates a new object with only the specified properties from the source object.
- * @param keys Array of property keys to include in the result
- * @returns Function that takes an object and returns a new object with only the picked properties
- */
-export const pick =
-  <T extends object, K extends keyof T>(keys: readonly K[]) =>
-  (obj: T): Pick<T, K> =>
-    keys.reduce((acc, key) => ({ ...acc, [key]: obj[key] }), {} as Pick<T, K>);
-
-/**
- * Creates a new object with all properties except the specified ones from the source object.
- * @param keys Array of property keys to exclude from the result
- * @returns Function that takes an object and returns a new object without the omitted properties
- */
-export const omit =
-  <T extends object, K extends keyof T>(keys: readonly K[]) =>
-  (obj: T): Omit<T, K> =>
-    Object.keys(obj)
-      .filter(k => !keys.includes(k as K))
-      .reduce((acc, key) => ({ ...acc, [key]: obj[key as keyof T] }), {} as Omit<T, K>);
-
-/**
  * Safely gets a property value from an object with Result-based error handling.
  * @param key The property key to extract
  * @param onMissing Function to generate error when property is missing or undefined
  * @returns Function that takes an object and returns Success with value or Failure if missing
  */
-export const propResult =
+export const prop =
   <T extends object, K extends keyof T, E>(key: K, onMissing: () => E) =>
   (obj: T): Result<E, T[K]> => {
     if (!(key in obj) || obj[key] === undefined) {
@@ -54,7 +22,7 @@ export const propResult =
  * @param onMissing Function to generate error when a property is missing
  * @returns Function that takes an object and returns Success with picked properties or Failure if any missing
  */
-export const pickResult =
+export const pick =
   <T extends object, K extends keyof T, E>(keys: readonly K[], onMissing: (missingKey: K) => E) =>
   (obj: T): Result<E, Pick<T, K>> => {
     const result: Partial<Pick<T, K>> = {};
@@ -75,7 +43,7 @@ export const pickResult =
  * @param keys Array of property keys to exclude from the result
  * @returns Function that takes an object and returns Success with omitted properties
  */
-export const omitResult =
+export const omit =
   <T extends object, K extends keyof T>(keys: readonly K[]) =>
   (obj: T): Result<never, Omit<T, K>> => {
     const result = Object.keys(obj)

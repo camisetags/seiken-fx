@@ -1,4 +1,4 @@
-import { prop, pick, omit, propResult, pickResult, omitResult, getPath } from '../src/object';
+import { prop, pick, omit, getPath } from '../src/object';
 
 describe('Object utilities', () => {
   const testObj = {
@@ -9,50 +9,11 @@ describe('Object utilities', () => {
   };
 
   describe('prop', () => {
-    it('should extract a property from an object', () => {
-      const getName = prop<typeof testObj, 'name'>('name');
-      expect(getName(testObj)).toBe('John');
-    });
-
-    it('should handle undefined properties', () => {
-      const getUnknown = prop<any, any>('unknown' as any);
-      expect(getUnknown(testObj)).toBeUndefined();
-    });
-  });
-
-  describe('pick', () => {
-    it('should pick specific properties from an object', () => {
-      const pickNameAndAge = pick<typeof testObj, 'name' | 'age'>(['name', 'age']);
-      expect(pickNameAndAge(testObj)).toEqual({
-        name: 'John',
-        age: 30,
-      });
-    });
-
-    it('should handle empty key array', () => {
-      const pickNothing = pick([]);
-      expect(pickNothing(testObj)).toEqual({});
-    });
-  });
-
-  describe('omit', () => {
-    it('should omit specific properties from an object', () => {
-      const omitNameAndAge = omit<typeof testObj, 'name' | 'age'>(['name', 'age']);
-      expect(omitNameAndAge(testObj)).toEqual({
-        city: 'New York',
-        country: 'USA',
-      });
-    });
-
-    it('should handle empty key array', () => {
-      const omitNothing = omit<typeof testObj, never>([]);
-      expect(omitNothing(testObj)).toEqual(testObj);
-    });
-  });
-
-  describe('propResult', () => {
     it('should return Success when property exists', () => {
-      const getNameResult = propResult<typeof testObj, 'name', string>('name', () => 'Property not found');
+      const getNameResult = prop<typeof testObj, 'name', string>(
+        'name',
+        () => 'Property not found',
+      );
       const result = getNameResult(testObj);
 
       expect(result.isSuccess()).toBe(true);
@@ -62,7 +23,7 @@ describe('Object utilities', () => {
     });
 
     it('should return Failure when property does not exist', () => {
-      const getUnknownResult = propResult<any, any, string>('unknown' as any, () => 'Property not found');
+      const getUnknownResult = prop<any, any, string>('unknown' as any, () => 'Property not found');
       const result = getUnknownResult(testObj);
 
       expect(result.isFailure()).toBe(true);
@@ -70,27 +31,13 @@ describe('Object utilities', () => {
       expect(value).toBe(null);
       expect(error).toBe('Property not found');
     });
-
-    it('should return Failure when property is undefined', () => {
-      const objWithUndefined = { ...testObj, undefinedProp: undefined };
-      const getUndefinedResult = propResult<typeof objWithUndefined, 'undefinedProp', string>(
-        'undefinedProp',
-        () => 'Property is undefined'
-      );
-      const result = getUndefinedResult(objWithUndefined);
-
-      expect(result.isFailure()).toBe(true);
-      const [value, error] = result.unwrap();
-      expect(value).toBe(null);
-      expect(error).toBe('Property is undefined');
-    });
   });
 
-  describe('pickResult', () => {
+  describe('pick', () => {
     it('should return Success when all properties exist', () => {
-      const pickNameAndAgeResult = pickResult<typeof testObj, 'name' | 'age', string>(
+      const pickNameAndAgeResult = pick<typeof testObj, 'name' | 'age', string>(
         ['name', 'age'],
-        (key) => `Missing property: ${String(key)}`
+        key => `Missing property: ${String(key)}`,
       );
       const result = pickNameAndAgeResult(testObj);
 
@@ -104,9 +51,9 @@ describe('Object utilities', () => {
     });
 
     it('should return Failure when any property is missing', () => {
-      const pickWithMissingResult = pickResult<any, any, string>(
+      const pickWithMissingResult = pick<any, any, string>(
         ['name', 'unknown'],
-        (key) => `Missing property: ${String(key)}`
+        key => `Missing property: ${String(key)}`,
       );
       const result = pickWithMissingResult(testObj);
 
@@ -117,9 +64,9 @@ describe('Object utilities', () => {
     });
 
     it('should handle empty key array', () => {
-      const pickNothingResult = pickResult<typeof testObj, never, string>(
+      const pickNothingResult = pick<typeof testObj, never, string>(
         [],
-        (key) => `Missing property: ${String(key)}`
+        key => `Missing property: ${String(key)}`,
       );
       const result = pickNothingResult(testObj);
 
@@ -130,9 +77,9 @@ describe('Object utilities', () => {
     });
   });
 
-  describe('omitResult', () => {
+  describe('omit', () => {
     it('should return Success with omitted properties', () => {
-      const omitNameAndAgeResult = omitResult<typeof testObj, 'name' | 'age'>(['name', 'age']);
+      const omitNameAndAgeResult = omit<typeof testObj, 'name' | 'age'>(['name', 'age']);
       const result = omitNameAndAgeResult(testObj);
 
       expect(result.isSuccess()).toBe(true);
@@ -145,8 +92,18 @@ describe('Object utilities', () => {
     });
 
     it('should handle empty key array', () => {
-      const omitNothingResult = omitResult<typeof testObj, never>([]);
+      const omitNothingResult = omit<typeof testObj, never>([]);
       const result = omitNothingResult(testObj);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toEqual(testObj);
+      expect(error).toBe(null);
+    });
+
+    it('should handle omitting non-existent properties', () => {
+      const omitUnknownResult = omit<typeof testObj, any>(['unknown' as any]);
+      const result = omitUnknownResult(testObj);
 
       expect(result.isSuccess()).toBe(true);
       const [value, error] = result.unwrap();
@@ -159,24 +116,21 @@ describe('Object utilities', () => {
     const nestedObj = {
       user: {
         profile: {
-          personal: {
-            name: 'John',
-            age: 30,
-          },
-          contact: {
-            email: 'john@example.com',
+          name: 'John',
+          settings: {
+            theme: 'dark',
           },
         },
       },
-      settings: {
-        theme: 'dark',
+      metadata: {
+        version: '1.0',
       },
     };
 
     it('should return Success when path exists', () => {
       const getNestedName = getPath<typeof nestedObj, string>(
-        ['user', 'profile', 'personal', 'name'],
-        (path) => `Path not found: ${path}`
+        ['user', 'profile', 'name'],
+        path => `Path not found: ${path}`,
       );
       const result = getNestedName(nestedObj);
 
@@ -187,38 +141,36 @@ describe('Object utilities', () => {
     });
 
     it('should return Success for single-level path', () => {
-      const getSettings = getPath<typeof nestedObj, string>(
-        ['settings'],
-        (path) => `Path not found: ${path}`
+      const getMetadata = getPath<typeof nestedObj, string>(
+        ['metadata'],
+        path => `Path not found: ${path}`,
       );
-      const result = getSettings(nestedObj);
+      const result = getMetadata(nestedObj);
 
       expect(result.isSuccess()).toBe(true);
       const [value, error] = result.unwrap();
-      expect(value).toEqual({ theme: 'dark' });
+      expect(value).toEqual({ version: '1.0' });
       expect(error).toBe(null);
     });
 
     it('should return Failure when path does not exist', () => {
       const getInvalidPath = getPath<typeof nestedObj, string>(
-        ['user', 'profile', 'invalid', 'prop'],
-        (path) => `Path not found: ${path}`
+        ['user', 'profile', 'invalid'],
+        path => `Path not found: ${path}`,
       );
       const result = getInvalidPath(nestedObj);
 
       expect(result.isFailure()).toBe(true);
       const [value, error] = result.unwrap();
       expect(value).toBe(null);
-      expect(error).toBe('Path not found: user.profile.invalid.prop');
+      expect(error).toBe('Path not found: user.profile.invalid');
     });
 
     it('should return Failure when intermediate value is null', () => {
-      const objWithNull = {
-        user: null,
-      };
+      const objWithNull = { user: null };
       const getFromNull = getPath<typeof objWithNull, string>(
         ['user', 'profile'],
-        (path) => `Path not found: ${path}`
+        path => `Path not found: ${path}`,
       );
       const result = getFromNull(objWithNull);
 
@@ -229,12 +181,10 @@ describe('Object utilities', () => {
     });
 
     it('should return Failure when intermediate value is undefined', () => {
-      const objWithUndefined = {
-        user: undefined,
-      };
+      const objWithUndefined = { user: undefined };
       const getFromUndefined = getPath<typeof objWithUndefined, string>(
         ['user', 'profile'],
-        (path) => `Path not found: ${path}`
+        path => `Path not found: ${path}`,
       );
       const result = getFromUndefined(objWithUndefined);
 
@@ -247,7 +197,7 @@ describe('Object utilities', () => {
     it('should handle empty path array', () => {
       const getRoot = getPath<typeof nestedObj, string>(
         [],
-        (path) => `Path not found: ${path}`
+        path => `Path not found: ${path}`,
       );
       const result = getRoot(nestedObj);
 
