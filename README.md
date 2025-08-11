@@ -1,5 +1,10 @@
 # seiken-fx
 
+[![CI](https://github.com/camisetags/seiken-fx/workflows/CI/badge.svg)](https://github.com/camisetags/seiken-fx/actions)
+[![npm version](https://badge.fury.io/js/seiken-fx.svg)](https://badge.fury.io/js/seiken-fx)
+[![codecov](https://codecov.io/gh/camisetags/seiken-fx/branch/main/graph/badge.svg)](https://codecov.io/gh/camisetags/seiken-fx)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A lightweight functional programming utility library for TypeScript/JavaScript applications.
 
 ## Installation
