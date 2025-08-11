@@ -1,30 +1,15 @@
-import { Result, success, failure, tryCatch } from './result';
+import { Result, success, failure } from './result';
 
-// Original functions
+/**
+ * Transforms each element of an array using a function that returns a Result.
+ * If any transformation fails, returns the first failure encountered.
+ * @param fn Function that transforms each element and may fail
+ * @returns Function that takes an array and returns a Result of transformed array
+ */
 export const map =
-  <T, U>(fn: (x: T) => U) =>
-  (arr: readonly T[]): readonly U[] =>
-    arr.map(fn);
-
-export const filter =
-  <T>(predicate: (x: T) => boolean) =>
-  (arr: readonly T[]): readonly T[] =>
-    arr.filter(predicate);
-
-export const reduce =
-  <T, U>(fn: (acc: U, curr: T) => U, initial: U) =>
-  (arr: readonly T[]): U =>
-    arr.reduce(fn, initial);
-
-export const head = <T>(arr: readonly T[]): T | undefined => arr[0];
-
-export const tail = <T>(arr: readonly T[]): readonly T[] => arr.slice(1);
-
-// Result-based versions
-export const mapResult =
   <T, U, E>(fn: (x: T) => Result<E, U>) =>
   (arr: readonly T[]): Result<E, readonly U[]> => {
-    const results: readonly Result<E, U>[] = [];
+    const results: Result<E, U>[] = [];
 
     for (const item of arr) {
       const result = fn(item);
@@ -37,10 +22,16 @@ export const mapResult =
     return success(results.map(r => (r as any).value));
   };
 
-export const filterResult =
+/**
+ * Filters an array using a predicate function that returns a Result.
+ * If any predicate evaluation fails, returns the first failure encountered.
+ * @param predicate Function that tests each element and may fail
+ * @returns Function that takes an array and returns a Result of filtered array
+ */
+export const filter =
   <T, E>(predicate: (x: T) => Result<E, boolean>) =>
   (arr: readonly T[]): Result<E, readonly T[]> => {
-    const filtered: readonly T[] = [];
+    const filtered: T[] = [];
 
     for (const item of arr) {
       const result = predicate(item);
@@ -57,7 +48,14 @@ export const filterResult =
     return success(filtered);
   };
 
-export const reduceResult =
+/**
+ * Reduces an array to a single value using a function that returns a Result.
+ * If any reduction step fails, returns the first failure encountered.
+ * @param fn Function that combines accumulator and current element, may fail
+ * @param initial Initial value for the accumulator
+ * @returns Function that takes an array and returns a Result of the reduced value
+ */
+export const reduce =
   <T, U, E>(fn: (acc: U, curr: T) => Result<E, U>, initial: U) =>
   (arr: readonly T[]): Result<E, U> => {
     let acc: U = initial;
@@ -73,21 +71,57 @@ export const reduceResult =
     return success(acc);
   };
 
-export const headResult = <T, E>(arr: readonly T[], errorFn: () => E): Result<E, T> => {
+/**
+ * Safely gets the first element of an array.
+ * @param arr The array to get the head from
+ * @param errorFn Function to generate error if array is empty
+ * @returns Success with first element, or Failure if array is empty
+ */
+export const head = <T, E>(arr: readonly T[], errorFn: () => E): Result<E, T> => {
   if (arr.length === 0) {
     return failure(errorFn());
   }
   return success(arr[0]);
 };
 
-export const tailResult = <T>(arr: readonly T[]): Result<never, readonly T[]> => {
+/**
+ * Gets all elements except the first from an array.
+ * @param arr The array to get the tail from
+ * @returns Success with array of remaining elements (empty array if original was empty)
+ */
+export const tail = <T>(arr: readonly T[]): Result<never, readonly T[]> => {
   return success(arr.slice(1));
 };
 
-export const safeArrayOp =
-  <T, U>(fn: (arr: readonly T[]) => U): ((arr: readonly T[]) => Result<Error, U>) =>
-  arr =>
-    tryCatch(
-      () => fn(arr),
-      e => (e instanceof Error ? e : new Error(String(e))),
-    );
+/**
+ * Safely accesses an array element by index.
+ * @param index The index to access
+ * @param errorFn Function to generate error if index is out of bounds
+ * @returns Function that takes an array and returns Success with element or Failure if out of bounds
+ */
+export const get =
+  <T, E>(index: number, errorFn: (index: number) => E) =>
+  (arr: readonly T[]): Result<E, T> => {
+    if (index < 0 || index >= arr.length) {
+      return failure(errorFn(index));
+    }
+    return success(arr[index]);
+  };
+
+/**
+ * Checks if an array is empty.
+ * @param arr The array to check
+ * @returns Success with true if empty, false otherwise
+ */
+export const isEmpty = <T>(arr: readonly T[]): Result<never, boolean> => {
+  return success(arr.length === 0);
+};
+
+/**
+ * Gets the length of an array safely.
+ * @param arr The array to get the length of
+ * @returns Success with the array length
+ */
+export const length = <T>(arr: readonly T[]): Result<never, number> => {
+  return success(arr.length);
+};

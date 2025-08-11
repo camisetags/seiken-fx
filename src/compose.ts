@@ -1,39 +1,52 @@
 import { Result, success } from './result';
 
-export const compose =
-  <T>(...fns: ReadonlyArray<(arg: T) => T>) =>
-  (initial: T): T =>
-    fns.reduceRight((acc, fn) => fn(acc), initial);
-
-export const pipe =
-  <T>(...fns: ReadonlyArray<(arg: T) => T>) =>
-  (initial: T): T =>
-    fns.reduce((acc, fn) => fn(acc), initial);
-
+/**
+ * Creates a curried version of a function, allowing partial application.
+ * @param fn The function to curry
+ * @returns A curried function that can be called with partial arguments
+ */
 export const curry = (fn: (...args1: any[]) => any) => {
   return function curried(this: any, ...args2: any[]) {
     if (args2.length >= fn.length) {
       return fn.apply(this, args2);
     }
     return function (this: any, ...moreArgs: readonly any[]) {
-      return curried.apply(this, args.concat(moreArgs));
+      return curried.apply(this, args2.concat(moreArgs));
     };
   };
 };
 
-export const composeResult =
+/**
+ * Composes functions from right to left, with Result-based error handling.
+ * Each function receives the output of the function to its right.
+ * @param fns Functions to compose, each returning a Result
+ * @returns Function that applies the composition to an initial value
+ */
+export const compose =
   <E, T>(...fns: ReadonlyArray<(arg: T) => Result<E, T>>) =>
   (initial: T): Result<E, T> => {
     return fns.reduceRight((acc: Result<E, T>, fn) => acc.flatMap(fn), success(initial));
   };
 
-export const pipeResult =
+/**
+ * Pipes functions from left to right, with Result-based error handling.
+ * Each function receives the output of the function to its left.
+ * @param fns Functions to pipe, each returning a Result
+ * @returns Function that applies the pipeline to an initial value
+ */
+export const pipe =
   <E, T>(...fns: ReadonlyArray<(arg: T) => Result<E, T>>) =>
   (initial: T): Result<E, T> => {
     return fns.reduce((acc: Result<E, T>, fn) => acc.flatMap(fn), success(initial));
   };
 
-export const composeAsyncResult =
+/**
+ * Composes async functions from right to left, with Result-based error handling.
+ * Each function receives the output of the function to its right.
+ * @param fns Async functions to compose, each returning a Promise<Result>
+ * @returns Async function that applies the composition to an initial value
+ */
+export const composeAsync =
   <E, T>(...fns: ReadonlyArray<(arg: T) => Promise<Result<E, T>>>) =>
   async (initial: T): Promise<Result<E, T>> => {
     let result: Result<E, T> = success(initial);
@@ -47,7 +60,13 @@ export const composeAsyncResult =
     return result;
   };
 
-export const pipeAsyncResult =
+/**
+ * Pipes async functions from left to right, with Result-based error handling.
+ * Each function receives the output of the function to its left.
+ * @param fns Async functions to pipe, each returning a Promise<Result>
+ * @returns Async function that applies the pipeline to an initial value
+ */
+export const pipeAsync =
   <E, T>(...fns: ReadonlyArray<(arg: T) => Promise<Result<E, T>>>) =>
   async (initial: T): Promise<Result<E, T>> => {
     let result: Result<E, T> = success(initial);
@@ -61,30 +80,37 @@ export const pipeAsyncResult =
     return result;
   };
 
-export interface Compose<T> {
-  (...fns: ReadonlyArray<(arg: T) => T>): (initial: T) => T;
-}
-
-export interface Pipe<T> {
-  (...fns: ReadonlyArray<(arg: T) => T>): (initial: T) => T;
-}
-
+/**
+ * Interface for the curry function.
+ */
 export interface Curry {
   (fn: Function): (...args: readonly any[]) => any;
 }
 
-export interface ComposeResult<E, T> {
+/**
+ * Interface for the compose function that chains Result-returning functions from right to left.
+ */
+export interface Compose<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Result<E, T>>): (initial: T) => Result<E, T>;
 }
 
-export interface PipeResult<E, T> {
+/**
+ * Interface for the pipe function that chains Result-returning functions from left to right.
+ */
+export interface Pipe<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Result<E, T>>): (initial: T) => Result<E, T>;
 }
 
-export interface ComposeAsyncResult<E, T> {
+/**
+ * Interface for the composeAsync function that chains async Result-returning functions from right to left.
+ */
+export interface ComposeAsync<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Promise<Result<E, T>>>): (initial: T) => Promise<Result<E, T>>;
 }
 
-export interface PipeAsyncResult<E, T> {
+/**
+ * Interface for the pipeAsync function that chains async Result-returning functions from left to right.
+ */
+export interface PipeAsync<E, T> {
   (...fns: ReadonlyArray<(arg: T) => Promise<Result<E, T>>>): (initial: T) => Promise<Result<E, T>>;
 }

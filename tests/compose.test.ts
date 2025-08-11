@@ -1,52 +1,7 @@
-import { compose, pipe, curry } from '../src/compose';
+import { curry, compose, pipe, composeAsync, pipeAsync } from '../src/compose';
+import { success, failure, Result } from '../src/result';
 
 describe('Composition utilities', () => {
-  describe('compose', () => {
-    it('should compose functions from right to left', () => {
-      const add5 = (x: number) => x + 5;
-      const multiply2 = (x: number) => x * 2;
-      const subtract3 = (x: number) => x - 3;
-
-      const composed = compose(add5, multiply2, subtract3);
-      // ((10 - 3) * 2) + 5 = 19
-      expect(composed(10)).toBe(19);
-    });
-
-    it('should handle single function', () => {
-      const add5 = (x: number) => x + 5;
-      const composed = compose(add5);
-      expect(composed(10)).toBe(15);
-    });
-
-    it('should handle no functions', () => {
-      const composed = compose();
-      expect(composed(10)).toBe(10);
-    });
-  });
-
-  describe('pipe', () => {
-    it('should pipe functions from left to right', () => {
-      const add5 = (x: number) => x + 5;
-      const multiply2 = (x: number) => x * 2;
-      const subtract3 = (x: number) => x - 3;
-
-      const piped = pipe(subtract3, multiply2, add5);
-      // ((10 - 3) * 2) + 5 = 19
-      expect(piped(10)).toBe(19);
-    });
-
-    it('should handle single function', () => {
-      const add5 = (x: number) => x + 5;
-      const piped = pipe(add5);
-      expect(piped(10)).toBe(15);
-    });
-
-    it('should handle no functions', () => {
-      const piped = pipe();
-      expect(piped(10)).toBe(10);
-    });
-  });
-
   describe('curry', () => {
     it('should curry a function with multiple arguments', () => {
       const add = (a: number, b: number, c: number) => a + b + c;
@@ -62,6 +17,223 @@ describe('Composition utilities', () => {
       const double = (x: number) => x * 2;
       const curriedDouble = curry(double);
       expect(curriedDouble(5)).toBe(10);
+    });
+
+    it('should handle functions with no arguments', () => {
+      const getValue = () => 42;
+      const curriedGetValue = curry(getValue);
+      expect(curriedGetValue()).toBe(42);
+    });
+
+    it('should preserve context (this) when currying', () => {
+      const obj = {
+        multiplier: 2,
+        multiply: function (a: number, b: number) {
+          return a * b * this.multiplier;
+        },
+      };
+
+      const curriedMultiply = curry(obj.multiply.bind(obj));
+      expect(curriedMultiply(3, 4)).toBe(24);
+      expect(curriedMultiply(3)(4)).toBe(24);
+    });
+  });
+
+  describe('compose', () => {
+    const double = (x: number): Result<string, number> => success(x * 2);
+    const addOne = (x: number): Result<string, number> => success(x + 1);
+    const subtract = (x: number): Result<string, number> => success(x - 3);
+    const failOnNegative = (x: number): Result<string, number> =>
+      x < 0 ? failure('Negative number') : success(x);
+
+    it('should compose functions from right to left', () => {
+      const composed = compose(double, addOne, subtract);
+      const result = composed(10);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(16); // (10 - 3 + 1) * 2 = 16
+      expect(error).toBe(null);
+    });
+
+    it('should handle single function composition', () => {
+      const composed = compose(double);
+      const result = composed(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(10);
+      expect(error).toBe(null);
+    });
+
+    it('should handle empty composition', () => {
+      const composed = compose<string, number>();
+      const result = composed(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(5);
+      expect(error).toBe(null);
+    });
+
+    it('should short-circuit on failure', () => {
+      const composed = compose(double, addOne, failOnNegative, subtract);
+      const result = composed(2);
+
+      expect(result.isFailure()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(null);
+      expect(error).toBe('Negative number');
+    });
+  });
+
+  describe('pipe', () => {
+    const double = (x: number): Result<string, number> => success(x * 2);
+    const addOne = (x: number): Result<string, number> => success(x + 1);
+    const subtract = (x: number): Result<string, number> => success(x - 3);
+    const failOnNegative = (x: number): Result<string, number> =>
+      x < 0 ? failure('Negative number') : success(x);
+
+    it('should pipe functions from left to right', () => {
+      const piped = pipe(subtract, addOne, double);
+      const result = piped(10);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(16); // (10 - 3 + 1) * 2 = 16
+      expect(error).toBe(null);
+    });
+
+    it('should handle single function pipe', () => {
+      const piped = pipe(double);
+      const result = piped(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(10);
+      expect(error).toBe(null);
+    });
+
+    it('should handle empty pipe', () => {
+      const piped = pipe<string, number>();
+      const result = piped(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(5);
+      expect(error).toBe(null);
+    });
+
+    it('should short-circuit on failure', () => {
+      const piped = pipe(subtract, failOnNegative, addOne, double);
+      const result = piped(2);
+
+      expect(result.isFailure()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(null);
+      expect(error).toBe('Negative number');
+    });
+  });
+
+  describe('composeAsync', () => {
+    const doubleAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(success(x * 2));
+    const addOneAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(success(x + 1));
+    const subtractAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(success(x - 3));
+    const failOnNegativeAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(x < 0 ? failure('Negative number') : success(x));
+
+    it('should compose async functions from right to left', async () => {
+      const composed = composeAsync(doubleAsync, addOneAsync, subtractAsync);
+      const result = await composed(10);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(16); // (10 - 3 + 1) * 2 = 16
+      expect(error).toBe(null);
+    });
+
+    it('should handle single async function composition', async () => {
+      const composed = composeAsync(doubleAsync);
+      const result = await composed(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(10);
+      expect(error).toBe(null);
+    });
+
+    it('should handle empty async composition', async () => {
+      const composed = composeAsync<string, number>();
+      const result = await composed(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(5);
+      expect(error).toBe(null);
+    });
+
+    it('should short-circuit on async failure', async () => {
+      const composed = composeAsync(doubleAsync, addOneAsync, failOnNegativeAsync, subtractAsync);
+      const result = await composed(2);
+
+      expect(result.isFailure()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(null);
+      expect(error).toBe('Negative number');
+    });
+  });
+
+  describe('pipeAsync', () => {
+    const doubleAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(success(x * 2));
+    const addOneAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(success(x + 1));
+    const subtractAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(success(x - 3));
+    const failOnNegativeAsync = async (x: number): Promise<Result<string, number>> =>
+      Promise.resolve(x < 0 ? failure('Negative number') : success(x));
+
+    it('should pipe async functions from left to right', async () => {
+      const piped = pipeAsync(subtractAsync, addOneAsync, doubleAsync);
+      const result = await piped(10);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(16); // (10 - 3 + 1) * 2 = 16
+      expect(error).toBe(null);
+    });
+
+    it('should handle single async function pipe', async () => {
+      const piped = pipeAsync(doubleAsync);
+      const result = await piped(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(10);
+      expect(error).toBe(null);
+    });
+
+    it('should handle empty async pipe', async () => {
+      const piped = pipeAsync<string, number>();
+      const result = await piped(5);
+
+      expect(result.isSuccess()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(5);
+      expect(error).toBe(null);
+    });
+
+    it('should short-circuit on async failure', async () => {
+      const piped = pipeAsync(subtractAsync, failOnNegativeAsync, addOneAsync, doubleAsync);
+      const result = await piped(2);
+
+      expect(result.isFailure()).toBe(true);
+      const [value, error] = result.unwrap();
+      expect(value).toBe(null);
+      expect(error).toBe('Negative number');
     });
   });
 });
