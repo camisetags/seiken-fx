@@ -2,52 +2,43 @@
 
 ## 📋 Checklist de Release
 
-### 1. Preparação do Pull Request
-- [x] ✅ Todos os testes passando (153/153)
-- [x] ✅ Build funcionando corretamente  
-- [x] ✅ Documentação atualizada (README.md + API_REFERENCE.md)
-- [x] ✅ Testes de imutabilidade implementados
-- [ ] 🔄 Pull Request criado e aprovado
-- [ ] 🔄 Merge para main
+### 1. Pull Request Preparation
+- [x] ✅ All tests passing (153/153)
+- [x] ✅ Build working correctly  
+- [x] ✅ Documentation updated (README.md + API_REFERENCE.md)
+- [x] ✅ Immutability tests implemented
+- [ ] 🔄 Pull Request created and approved
+- [ ] 🔄 Merge to main
 
-### 2. Preparação da Nova Versão
-- [ ] 🔄 Atualizar versão no package.json (0.2.1 → 0.3.0)
-- [ ] 🔄 Criar CHANGELOG.md
-- [ ] 🔄 Tag de release no Git
-- [ ] 🔄 Push das alterações
+### 2. New Version Preparation
+- [ ] 🔄 Update version in package.json (0.2.1 → 0.3.0)
+- [ ] 🔄 Create CHANGELOG.md
+- [ ] 🔄 Git release tag
+- [ ] 🔄 Push changes
 
-### 3. Deploy no NPM
-- [ ] 🔄 Build final
-- [ ] 🔄 Verificar se está logado no npm (`npm whoami`)
-- [ ] 🔄 Publicar no npm (`npm publish`)
-- [ ] 🔄 Verificar publicação
+### 3. Automated Deploy 🤖
+- [ ] 🔄 GitHub Actions automatically:
+  - Builds the project
+  - Runs all tests
+  - Publishes to npm
+  - Creates GitHub release
 
 ---
 
-## 🚀 Comandos para Executar (em ordem)
+## 🤖 Automated Process
 
-### Após merge do PR:
+The deployment is **fully automated** via GitHub Actions when you merge to main! 
 
-```bash
-# 1. Ir para main e atualizar
-git checkout main
-git pull origin main
+The workflow will:
+1. ✅ Run all tests
+2. ✅ Build the library
+3. ✅ Automatically publish to npm
+4. ✅ Create GitHub release
 
-# 2. Atualizar versão
-npm version minor  # 0.2.1 → 0.3.0
-
-# 3. Build final
-npm run build
-
-# 4. Verificar login npm
-npm whoami
-
-# 5. Publicar
-npm publish
-
-# 6. Push da tag
-git push origin main --tags
-```
+**You only need to:**
+1. Create and approve the Pull Request
+2. Merge to main
+3. ✨ **Done!** Everything else is automatic
 
 ---
 
@@ -73,23 +64,23 @@ git push origin main --tags
 
 ---
 
-## 🎯 O que mudou nesta versão
+## 🎯 What changed in this version
 
-1. **Testes de Imutabilidade**: 27 novos testes garantindo que a biblioteca mantém os princípios de programação funcional
-2. **Documentação Educacional**: README reescrito com foco em aprendizado progressivo
-3. **Referência de API**: Documentação completa de todas as 50+ funções
-4. **Melhor Organização**: Código mais limpo e bem documentado
-
----
-
-## 📞 Próximos Passos
-
-1. **Criar Pull Request** da branch `test/add-immutability-tests` para `main`
-2. **Revisar e aprovar** o PR
-3. **Fazer merge** para main
-4. **Executar comandos de release** listados acima
-5. **Verificar publicação** no npm
+1. **Immutability Tests**: 27 new tests ensuring the library maintains functional programming principles
+2. **Educational Documentation**: README rewritten with progressive learning focus
+3. **API Reference**: Complete documentation of all 50+ functions
+4. **Better Organization**: Cleaner and well-documented code
 
 ---
 
-*Este arquivo pode ser removido após o release*
+## 📞 Next Steps
+
+1. **Create Pull Request** from `test/add-immutability-tests` to `main`
+2. **Review and approve** the PR
+3. **Merge** to main
+4. **Automated deployment** will handle the rest
+5. **Verify publication** on npm
+
+---
+
+*This file can be removed after release*
