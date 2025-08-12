@@ -19,7 +19,6 @@ import {
 } from '../src';
 
 describe('Immutability Tests', () => {
-  // Helper function to create deep copies for comparison
   const deepCopy = <T>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
   describe('Array Operations Immutability', () => {
@@ -29,11 +28,9 @@ describe('Immutability Tests', () => {
 
       const result = map((x: number) => success(x * 2))(original);
 
-      // Original array should be unchanged
       expect(original).toEqual(originalCopy);
       expect(original.length).toBe(5);
 
-      // Result should be a new array
       result.fold(
         () => fail('Map should succeed'),
         mapped => {
@@ -49,10 +46,8 @@ describe('Immutability Tests', () => {
 
       const result = filter((x: number) => success(x > 2))(original);
 
-      // Original array should be unchanged
       expect(original).toEqual(originalCopy);
 
-      // Result should be a new array
       result.fold(
         () => fail('Filter should succeed'),
         filtered => {
@@ -68,7 +63,6 @@ describe('Immutability Tests', () => {
 
       const result = reduce((acc: number, curr: number) => success(acc + curr), 0)(original);
 
-      // Original array should be unchanged
       expect(original).toEqual(originalCopy);
 
       result.fold(
@@ -118,13 +112,12 @@ describe('Immutability Tests', () => {
         [3, 4],
         [5, 6],
       ];
-      const originalCopy = [...original]; // Shallow copy to maintain references
+      const originalCopy = [...original];
 
       const result = map((arr: number[]) => success([...arr, 0]))(original);
 
-      // Original nested arrays should be unchanged
       expect(original).toEqual(originalCopy);
-      expect(original[0]).toBe(originalCopy[0]); // Same reference in copy
+      expect(original[0]).toBe(originalCopy[0]);
 
       result.fold(
         () => fail('Should succeed'),
@@ -134,7 +127,7 @@ describe('Immutability Tests', () => {
             [3, 4, 0],
             [5, 6, 0],
           ]);
-          expect(mapped[0]).not.toBe(original[0]); // Different reference in result
+          expect(mapped[0]).not.toBe(original[0]);
         },
       );
     });
@@ -150,12 +143,12 @@ describe('Immutability Tests', () => {
           },
         },
       };
-      const originalCopy = { ...original }; // Shallow copy to maintain references
+      const originalCopy = { ...original };
 
       getPath(['user', 'profile', 'name'], () => 'not found')(original);
 
       expect(original).toEqual(originalCopy);
-      expect(original.user).toBe(originalCopy.user); // Should maintain references
+      expect(original.user).toBe(originalCopy.user);
     });
 
     it('should not mutate original object in mapValues operation', () => {
@@ -305,16 +298,13 @@ describe('Immutability Tests', () => {
           },
         },
       };
-      const originalCopy = { ...original }; // Shallow copy to maintain references
+      const originalCopy = { ...original };
 
-      // Perform various operations
       getPath(['user', 'profile', 'name'], () => 'not found')(original);
       getPath(['user', 'profile', 'contacts', 'emails'], () => 'not found')(original);
       getPath(['user', 'metadata', 'tags'], () => 'not found')(original);
 
       expect(original).toEqual(originalCopy);
-
-      // Verify all nested objects maintain their references
       expect(original.user).toBe(originalCopy.user);
       expect(original.user.profile).toBe(originalCopy.user.profile);
       expect(original.user.profile.contacts).toBe(originalCopy.user.profile.contacts);
@@ -336,20 +326,16 @@ describe('Immutability Tests', () => {
       result.fold(
         () => fail('Clone should succeed'),
         cloned => {
-          // Type the cloned result properly
           const typedCloned = cloned as typeof original;
 
-          // Different objects
           expect(typedCloned).not.toBe(original);
           expect(typedCloned.data).not.toBe(original.data);
           expect(typedCloned.data.items).not.toBe(original.data.items);
           expect(typedCloned.data.items[0]).not.toBe(original.data.items[0]);
           expect(typedCloned.data.config).not.toBe(original.data.config);
 
-          // But equal values
           expect(typedCloned).toEqual(original);
 
-          // Modifying clone shouldn't affect original
           typedCloned.data.items.push({ id: 3, name: 'Item 3' });
           expect(original.data.items.length).toBe(2);
         },
@@ -365,10 +351,8 @@ describe('Immutability Tests', () => {
 
       const mapped = result.map(data => ({ ...data, count: data.count * 2 }));
 
-      // Original data should be unchanged
       expect(originalData).toEqual(originalDataCopy);
 
-      // Original Result should contain unchanged data
       result.fold(
         () => fail('Should be success'),
         data => {
@@ -377,7 +361,6 @@ describe('Immutability Tests', () => {
         },
       );
 
-      // Mapped Result should contain new data
       mapped.fold(
         () => fail('Should be success'),
         data => {
@@ -394,10 +377,8 @@ describe('Immutability Tests', () => {
 
       result.flatMap(data => success({ ...data, sum: data.numbers.reduce((a, b) => a + b, 0) }));
 
-      // Original data should be unchanged
       expect(originalData).toEqual(originalDataCopy);
 
-      // Original Result should contain unchanged data
       result.fold(
         () => fail('Should be success'),
         data => {
@@ -414,7 +395,6 @@ describe('Immutability Tests', () => {
 
       const processed = result.map(arr => [...arr, 4, 5]);
 
-      // Original array should be unchanged
       expect(originalArray).toEqual(originalArrayCopy);
       expect(originalArray.length).toBe(3);
 
@@ -438,7 +418,6 @@ describe('Immutability Tests', () => {
         }),
       });
 
-      // These operations should not throw even with frozen objects
       expect(() => {
         getPath(['name'], () => 'not found')(frozen);
         getPath(['nested', 'value'], () => 'not found')(frozen);
@@ -537,9 +516,8 @@ describe('Immutability Tests', () => {
         ],
         config: { sortBy: 'name', order: 'asc' },
       };
-      const originalCopy = { ...original }; // Shallow copy to maintain references
+      const originalCopy = { ...original };
 
-      // Chain multiple operations
       const result = success(original)
         .map(data => ({ ...data, processed: true }))
         .flatMap(data => {
@@ -551,16 +529,15 @@ describe('Immutability Tests', () => {
           summary: { total: data.users.length, active: data.activeUsers.length },
         }));
 
-      // Original should remain completely unchanged
       expect(original).toEqual(originalCopy);
-      expect(original.users).toBe(originalCopy.users); // Same reference
-      expect(original.config).toBe(originalCopy.config); // Same reference
+      expect(original.users).toBe(originalCopy.users);
+      expect(original.config).toBe(originalCopy.config);
 
       result.fold(
         () => fail('Chain should succeed'),
         finalData => {
           expect(finalData).not.toBe(original);
-          expect(finalData.users).toBe(original.users); // Should share reference to unchanged array
+          expect(finalData.users).toBe(original.users);
           expect(finalData).toHaveProperty('processed', true);
           expect(finalData).toHaveProperty('activeUsers');
           expect(finalData).toHaveProperty('summary');
@@ -570,22 +547,19 @@ describe('Immutability Tests', () => {
 
     it('should handle circular reference prevention in clone', () => {
       const obj: any = { name: 'test' };
-      obj.self = obj; // Create circular reference
+      obj.self = obj;
 
       const result = clone({ maxDepth: 3, cloneFunctions: false }, () => 'circular')(obj);
 
       result.fold(
         error => {
-          // Should detect circular reference and fail gracefully
           expect(error).toContain('circular');
         },
         () => {
           // If it succeeds, it should be a proper clone
-          // This depends on implementation - it might succeed with limited depth
         },
       );
 
-      // Original should be unchanged regardless
       expect(obj.name).toBe('test');
       expect(obj.self).toBe(obj);
     });
