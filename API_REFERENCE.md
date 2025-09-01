@@ -148,6 +148,27 @@ const [value2, error2] = failure("oops").unwrap();
 // value2 = null, error2 = "oops"
 ```
 
+### `.if(predicate: (a: A) => boolean): ConditionalChain<E, A>`
+Conditional execution based on a predicate. Returns a chain object for `.then()` and `.else()`.
+
+```typescript
+success(15).if(value => value > 10)
+  .then(value => console.log(`${value} is large`))
+  .else(value => console.log(`${value} is small`));
+// Logs: "15 is large"
+
+failure("error").if(value => value.length > 0)
+  .then(value => console.log(`Success: ${value}`))
+  .else(error => console.log(`Error: ${error}`));
+// Logs: "Error: error" (always executes .else for Failure)
+```
+
+### `.then(callback: (a: A) => void): ConditionalChain<E, A>`
+Executes the callback if the condition from `.if()` was true. Returns the chain for continued chaining.
+
+### `.else(callback: (a: A) => void): Result<E, A>`
+Executes the callback if the condition from `.if()` was false, or if the Result is a Failure. Returns the original Result for continued chaining.
+
 ### `.isSuccess(): boolean`
 Type guard to check if Result is Success.
 

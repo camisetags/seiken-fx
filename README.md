@@ -370,6 +370,22 @@ const [data, error] = result.unwrap();
 if (error) { /* handle error */ } else { /* use data */ }
 ```
 
+### 🔄 **Fluid Conditional Execution**
+New `.if().then().else()` methods for elegant, chainable conditional logic:
+```typescript
+// Execute actions based on predicates with fluent chaining
+result
+  .if(value => value > 10)
+  .then(value => console.log(`${value} is large`))
+  .else(value => console.log(`${value} is small`));
+
+// Perfect for validation, logging, and conditional processing
+userResult
+  .if(user => user.age >= 18)
+  .then(user => sendWelcomeEmail(user))
+  .else(user => sendParentalConsent(user));
+```
+
 ### 🔄 **Dual Promise Integration**
 Unique approach to Promise handling with both Result and tuple patterns:
 ```typescript

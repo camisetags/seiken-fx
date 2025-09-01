@@ -165,4 +165,108 @@ describe('Result utilities', () => {
       expect(combined.getOrElse(null)).toEqual([]);
     });
   });
+
+  describe('conditional execution with .if().then().else()', () => {
+    it('should execute .then() when condition is true for Success', () => {
+      const thenMock = jest.fn();
+      const elseMock = jest.fn();
+      const result = success(15);
+
+      result.if(value => value > 10)
+        .then(thenMock)
+        .else(elseMock);
+
+      expect(thenMock).toHaveBeenCalledWith(15);
+      expect(elseMock).not.toHaveBeenCalled();
+    });
+
+    it('should execute .else() when condition is false for Success', () => {
+      const thenMock = jest.fn();
+      const elseMock = jest.fn();
+      const result = success(5);
+
+      result.if(value => value > 10)
+        .then(thenMock)
+        .else(elseMock);
+
+      expect(thenMock).not.toHaveBeenCalled();
+      expect(elseMock).toHaveBeenCalledWith(5);
+    });
+
+    it('should always execute .else() for Failure regardless of predicate', () => {
+      const thenMock = jest.fn();
+      const elseMock = jest.fn();
+      const result = failure('error occurred');
+
+      result.if(_value => true)
+        .then(thenMock)
+        .else(elseMock);
+
+      expect(thenMock).not.toHaveBeenCalled();
+      expect(elseMock).toHaveBeenCalledWith('error occurred');
+    });
+
+    it('should allow chaining .then() multiple times', () => {
+      const mock1 = jest.fn();
+      const mock2 = jest.fn();
+      const result = success(20);
+
+      result.if(value => value > 10)
+        .then(mock1)
+        .then(mock2);
+
+      expect(mock1).toHaveBeenCalledWith(20);
+      expect(mock2).toHaveBeenCalledWith(20);
+    });
+
+    it('should work with complex predicates', () => {
+      const user = { id: 1, name: 'John', age: 25 };
+      const result = success(user);
+      const adultMock = jest.fn();
+      const minorMock = jest.fn();
+
+      result.if(user => user.age >= 18)
+        .then(adultMock)
+        .else(minorMock);
+
+      expect(adultMock).toHaveBeenCalledWith(user);
+      expect(minorMock).not.toHaveBeenCalled();
+    });
+
+    it('should work with string predicates', () => {
+      const result = success('hello world');
+      const longMock = jest.fn();
+      const shortMock = jest.fn();
+
+      result.if(str => str.length > 10)
+        .then(longMock)
+        .else(shortMock);
+
+      expect(longMock).toHaveBeenCalledWith('hello world');
+      expect(shortMock).not.toHaveBeenCalled();
+    });
+
+    it('should return the original Result from .else() for continued chaining', () => {
+      const result = success(42);
+
+      const returned = result.if(_value => false)
+        .then(_value => console.log('Large number'))
+        .else(_value => console.log('Small number'));
+
+      expect(returned).toBe(result);
+    });
+
+    it('should handle edge case with zero', () => {
+      const result = success(0);
+      const positiveMock = jest.fn();
+      const zeroMock = jest.fn();
+
+      result.if(value => value > 0)
+        .then(positiveMock)
+        .else(zeroMock);
+
+      expect(positiveMock).not.toHaveBeenCalled();
+      expect(zeroMock).toHaveBeenCalledWith(0);
+    });
+  });
 });

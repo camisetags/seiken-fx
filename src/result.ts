@@ -95,6 +95,58 @@ class Success<A> {
   unwrap(): [A, null] {
     return [this.value, null];
   }
+
+  /**
+   * Conditional execution based on a predicate.
+   * @param predicate Function that returns true/false based on the value
+   * @returns A conditional chain object for .then() and .else()
+   */
+  if(predicate: (a: A) => boolean): ConditionalChain<never, A> {
+    return new ConditionalChain(this, predicate(this.value));
+  }
+}
+
+/**
+ * Chain object for conditional execution with .then() and .else()
+ */
+class ConditionalChain<E, A> {
+  constructor(
+    private readonly result: Result<E, A>,
+    private readonly condition: boolean,
+  ) {}
+
+  /**
+   * Executes the callback if the condition was true.
+   * @param callback Function to execute when condition is true
+   * @returns This chain for continued chaining
+   */
+  then(callback: (a: A) => void): ConditionalChain<E, A> {
+    if (this.condition && this.result.isSuccess()) {
+      const success = this.result as Success<A>;
+      callback(success.value);
+    }
+    return this;
+  }
+
+  /**
+   * Executes the callback if the condition was false or if the Result is a Failure.
+   * @param callback Function to execute when condition is false or on failure
+   * @returns The original Result for continued chaining
+   */
+  else(callback: (a: A) => void): Result<E, A> {
+    if (this.result.isSuccess()) {
+      // For Success, execute if condition is false
+      if (!this.condition) {
+        const success = this.result as Success<A>;
+        callback(success.value);
+      }
+    } else {
+      // For Failure, always execute the callback with the error
+      const failure = this.result as Failure<E>;
+      callback(failure.error as any);
+    }
+    return this.result;
+  }
 }
 
 class Failure<E> {
@@ -187,6 +239,15 @@ class Failure<E> {
    */
   unwrap(): [null, E] {
     return [null, this.error];
+  }
+
+  /**
+   * Conditional execution - always returns a chain that executes .else() for Failure.
+   * @param _predicate Function that returns true/false (unused for Failure)
+   * @returns A conditional chain object that always executes .else()
+   */
+  if(_predicate: (a: never) => boolean): ConditionalChain<E, never> {
+    return new ConditionalChain(this, false);
   }
 }
 
