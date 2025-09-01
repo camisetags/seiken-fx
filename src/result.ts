@@ -2,6 +2,50 @@
  * Represents the result of a computation that can either succeed or fail.
  * Success contains the value of type A, while Failure contains an error of type E.
  */
+
+// Extend the Result type to include the if/else methods
+export interface ResultMethods<E, A> {
+  if(f: (a: A) => boolean): ConditionalChain<E, A>;
+  else(f: (e: E) => void): Result<E, A>;
+  match<R>(patterns: Pattern<E, A, R>[]): R;
+}
+
+// Pattern matching types for Elixir-style matching
+export type Pattern<E, A, R> =
+  | [typeof success, (value: A) => R] // Basic success pattern
+  | [typeof success, (value: A) => boolean, (value: A) => R] // Success with guard
+  | [typeof success, object, (value: A) => R] // Success with destructuring
+  | [typeof failure, (error: E) => R]; // Failure pattern
+
+// Type guard to check if a pattern is a destructuring pattern
+function isDestructuringPattern<E, A, R>(
+  pattern: Pattern<E, A, R>,
+): pattern is [typeof success, object, (value: A) => R] {
+  return pattern.length === 3 && pattern[0] === success && typeof pattern[1] === 'object';
+}
+
+// Type guard to check if a pattern is a guard pattern
+function isGuardPattern<E, A, R>(
+  pattern: Pattern<E, A, R>,
+): pattern is [typeof success, (value: A) => boolean, (value: A) => R] {
+  return pattern.length === 3 && pattern[0] === success && typeof pattern[1] === 'function';
+}
+
+// Type guard to check if a pattern is a basic success pattern
+function isBasicSuccessPattern<E, A, R>(
+  pattern: Pattern<E, A, R>,
+): pattern is [typeof success, (value: A) => R] {
+  return pattern.length === 2 && pattern[0] === success;
+}
+
+// Type guard to check if a pattern is a failure pattern
+function isFailurePattern<E, A, R>(
+  pattern: Pattern<E, A, R>,
+): pattern is [typeof failure, (error: E) => R] {
+  return pattern[0] === failure;
+}
+
+// Define the Result type
 export type Result<E, A> = Success<A> | Failure<E>;
 
 class Success<A> {
@@ -101,8 +145,73 @@ class Success<A> {
    * @param predicate Function that returns true/false based on the value
    * @returns A conditional chain object for .then() and .else()
    */
-  if(predicate: (a: A) => boolean): ConditionalChain<never, A> {
+  if(predicate: (a: A) => boolean): ConditionalChain<any, A> {
     return new ConditionalChain(this, predicate(this.value));
+  }
+
+  /**
+   * Does nothing for Success since this is not a Failure.
+   * @param _f Function to execute on failure (unused)
+   * @returns This Success instance for chaining
+   */
+  else(_f: (e: never) => void): Success<A> {
+    return this;
+  }
+
+  /**
+   * Pattern matching for Elixir-style conditional execution.
+   * @param patterns Array of patterns to match against
+   * @returns The result of the first matching pattern
+   */
+  match<R>(patterns: Pattern<any, A, R>[]): R {
+    for (const pattern of patterns) {
+      if (isFailurePattern(pattern)) {
+        // Skip failure patterns for Success
+        continue;
+      }
+
+      if (isDestructuringPattern(pattern)) {
+        // Pattern with destructuring: [success, object, callback]
+        const [, destructure, callback] = pattern as [typeof success, object, (value: A) => R];
+        if (this.matchesDestructuring(destructure)) {
+          return callback(this.value);
+        }
+      } else if (isGuardPattern(pattern)) {
+        // Pattern with guard: [success, guard, callback]
+        const [, guard, callback] = pattern as [
+          typeof success,
+          (value: A) => boolean,
+          (value: A) => R,
+        ];
+        if (guard(this.value)) {
+          return callback(this.value);
+        }
+      } else if (isBasicSuccessPattern(pattern)) {
+        // Basic success pattern: [success, callback]
+        const [, callback] = pattern as [typeof success, (value: A) => R];
+        return callback(this.value);
+      }
+    }
+
+    // If no pattern matches, throw an error
+    throw new Error('No matching pattern found');
+  }
+
+  /**
+   * Helper method to check if the value matches a destructuring pattern.
+   * @param destructure The destructuring object to match against
+   * @returns true if the value matches the destructuring pattern
+   */
+  private matchesDestructuring(destructure: object): boolean {
+    const value = this.value as any;
+
+    for (const [key, expectedValue] of Object.entries(destructure)) {
+      if (value[key] !== expectedValue) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
 
@@ -248,6 +357,34 @@ class Failure<E> {
    */
   if(_predicate: (a: never) => boolean): ConditionalChain<E, never> {
     return new ConditionalChain(this, false);
+  }
+
+  /**
+   * Does nothing for Failure since this is not a Success.
+   * @param _f Function to execute on success (unused)
+   * @returns This Failure instance for chaining
+   */
+  else(_f: (a: never) => void): Failure<E> {
+    return this;
+  }
+
+  /**
+   * Pattern matching for Elixir-style conditional execution.
+   * For Failure, only failure patterns are executed.
+   * @param patterns Array of patterns to match against
+   * @returns The result of the first matching failure pattern
+   */
+  match<R>(patterns: Pattern<E, never, R>[]): R {
+    for (const pattern of patterns) {
+      if (isFailurePattern(pattern)) {
+        // Execute failure pattern
+        const [, callback] = pattern;
+        return callback(this.error);
+      }
+    }
+
+    // If no failure pattern matches, throw an error
+    throw new Error('No matching failure pattern found');
   }
 }
 

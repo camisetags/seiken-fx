@@ -172,7 +172,8 @@ describe('Result utilities', () => {
       const elseMock = jest.fn();
       const result = success(15);
 
-      result.if(value => value > 10)
+      result
+        .if(value => value > 10)
         .then(thenMock)
         .else(elseMock);
 
@@ -185,7 +186,8 @@ describe('Result utilities', () => {
       const elseMock = jest.fn();
       const result = success(5);
 
-      result.if(value => value > 10)
+      result
+        .if(value => value > 10)
         .then(thenMock)
         .else(elseMock);
 
@@ -198,7 +200,8 @@ describe('Result utilities', () => {
       const elseMock = jest.fn();
       const result = failure('error occurred');
 
-      result.if(_value => true)
+      result
+        .if(_value => true)
         .then(thenMock)
         .else(elseMock);
 
@@ -211,7 +214,8 @@ describe('Result utilities', () => {
       const mock2 = jest.fn();
       const result = success(20);
 
-      result.if(value => value > 10)
+      result
+        .if(value => value > 10)
         .then(mock1)
         .then(mock2);
 
@@ -225,7 +229,8 @@ describe('Result utilities', () => {
       const adultMock = jest.fn();
       const minorMock = jest.fn();
 
-      result.if(user => user.age >= 18)
+      result
+        .if(user => user.age >= 18)
         .then(adultMock)
         .else(minorMock);
 
@@ -238,7 +243,8 @@ describe('Result utilities', () => {
       const longMock = jest.fn();
       const shortMock = jest.fn();
 
-      result.if(str => str.length > 10)
+      result
+        .if(str => str.length > 10)
         .then(longMock)
         .else(shortMock);
 
@@ -249,7 +255,8 @@ describe('Result utilities', () => {
     it('should return the original Result from .else() for continued chaining', () => {
       const result = success(42);
 
-      const returned = result.if(_value => false)
+      const returned = result
+        .if(_value => false)
         .then(_value => console.log('Large number'))
         .else(_value => console.log('Small number'));
 
@@ -261,12 +268,192 @@ describe('Result utilities', () => {
       const positiveMock = jest.fn();
       const zeroMock = jest.fn();
 
-      result.if(value => value > 0)
+      result
+        .if(value => value > 0)
         .then(positiveMock)
         .else(zeroMock);
 
       expect(positiveMock).not.toHaveBeenCalled();
       expect(zeroMock).toHaveBeenCalledWith(0);
+    });
+  });
+
+  describe('pattern matching with .match()', () => {
+    it('should execute basic success pattern', () => {
+      const result = success('hello world');
+      const mockFn = jest.fn();
+
+      const output = result.match([
+        [success, mockFn],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(mockFn).toHaveBeenCalledWith('hello world');
+      expect(output).toBeUndefined(); // mockFn returns void
+    });
+
+    it('should execute failure pattern for Failure', () => {
+      const result = failure('database error');
+
+      const output = result.match([
+        [success, (value: any) => `Success: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Error: database error');
+    });
+
+    it('should execute guard pattern when condition is true', () => {
+      const result = success(15);
+
+      const output = result.match([
+        [success, value => value > 10, value => `Large: ${value}`],
+        [success, value => value <= 10, value => `Small: ${value}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Large: 15');
+    });
+
+    it('should execute guard pattern when condition is false', () => {
+      const result = success(5);
+
+      const output = result.match([
+        [success, value => value > 10, value => `Large: ${value}`],
+        [success, value => value <= 10, value => `Small: ${value}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Small: 5');
+    });
+
+    it('should execute destructuring pattern when object matches', () => {
+      const user = { id: 1, name: 'John', age: 25 };
+      const result = success(user);
+
+      const output = result.match([
+        [success, { age: 25 }, user => `Adult: ${user.name}`],
+        [success, { age: age }, user => `Age: ${age}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Adult: John');
+    });
+
+    it('should execute destructuring pattern with partial match', () => {
+      const user = { id: 1, name: 'John', age: 25 };
+      const result = success(user);
+
+      const output = result.match([
+        [success, { age: 30 }, user => `Old: ${user.name}`],
+        [success, { age: age }, user => `Age: ${age}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Age: 25');
+    });
+
+    it('should execute first matching pattern in order', () => {
+      const result = success(15);
+
+      const output = result.match([
+        [success, value => value > 20, value => `Very large: ${value}`],
+        [success, value => value > 10, value => `Large: ${value}`],
+        [success, value => value > 0, value => `Positive: ${value}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Large: 15');
+    });
+
+    it('should throw error when no pattern matches', () => {
+      const result = success(5);
+
+      expect(() => {
+        result.match([
+          [success, value => value > 10, value => `Large: ${value}`],
+          [failure, error => `Error: ${error}`],
+        ]);
+      }).toThrow('No matching pattern found');
+    });
+
+    it('should throw error when no failure pattern matches', () => {
+      const result = failure('database error');
+
+      expect(() => {
+        result.match([[success, value => `Success: ${value}`]]);
+      }).toThrow('No matching failure pattern found');
+    });
+
+    it('should work with complex nested objects', () => {
+      const data = {
+        user: {
+          profile: {
+            name: 'John',
+            preferences: {
+              theme: 'dark',
+              language: 'en',
+            },
+          },
+        },
+      };
+      const result = success(data);
+
+      const output = result.match([
+        [
+          success,
+          { user: { profile: { preferences: { theme: 'dark' } } } },
+          data => 'Dark theme user',
+        ],
+        [
+          success,
+          { user: { profile: { preferences: { theme: 'light' } } } },
+          data => 'Light theme user',
+        ],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Dark theme user');
+    });
+
+    it('should work with array patterns', () => {
+      const result = success([1, 2, 3, 4, 5]);
+
+      const output = result.match([
+        [success, arr => arr.length > 10, arr => `Long array: ${arr.length}`],
+        [success, arr => arr.length > 5, arr => `Medium array: ${arr.length}`],
+        [success, arr => arr.length > 0, arr => `Short array: ${arr.length}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Short array: 5');
+    });
+
+    it('should handle multiple guard conditions', () => {
+      const result = success(42);
+
+      const output = result.match([
+        [success, value => value > 100, value => `Huge: ${value}`],
+        [success, value => value > 50, value => `Large: ${value}`],
+        [success, value => value > 25, value => `Medium: ${value}`],
+        [success, value => value > 0, value => `Small: ${value}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Medium: 42');
+    });
+
+    it('should work with string patterns', () => {
+      const result = success('hello world');
+
+      const output = result.match([
+        [success, str => str.includes('hello') && str.includes('world'), str => `Complete: ${str}`],
+        [success, str => str.includes('hello'), str => `Partial: ${str}`],
+        [success, str => str.length > 0, str => `Any: ${str}`],
+        [failure, error => `Error: ${error}`],
+      ]);
+
+      expect(output).toBe('Complete: hello world');
     });
   });
 });
