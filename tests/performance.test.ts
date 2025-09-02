@@ -1,4 +1,4 @@
-import { success, failure, all } from '../src/result';
+import { success, failure, all, Result } from '../src/result';
 import { map, filter, reduce, head, tail, get } from '../src/array';
 import { prop, pick, merge } from '../src/object';
 
@@ -153,11 +153,11 @@ describe('Performance Tests', () => {
   describe('Stress Tests', () => {
     it('should handle deeply nested operations', () => {
       const start = Date.now();
-      let result = success(0);
+      let result: Result<never, number> = success(0);
       
       // Chain 1000 operations
       for (let i = 0; i < 1000; i++) {
-        result = result.flatMap(x => success(x + 1));
+        result = result.flatMap((x: number) => success(x + 1));
       }
       
       const end = Date.now();
@@ -222,18 +222,18 @@ describe('Performance Tests', () => {
       
       const start = Date.now();
       
-      const processed = map((item: any) => ({
+      const processed = map((item: any) => success({
         ...item,
         doubled: item.value * 2
       }))(rawData)
         .flatMap(items => filter((item: any) => success(item.doubled > 500))(items))
-        .map(filtered => reduce((acc: number, item: any) => acc + item.doubled, 0)(filtered));
+        .map(filtered => reduce((acc: number, item: any) => success(acc + item.doubled), 0)(filtered));
       
       const end = Date.now();
       const duration = end - start;
       
       expect(processed.isSuccess()).toBe(true);
-      expect(typeof processed.getOrThrow()).toBe('number');
+      expect(typeof processed.getOrThrow().getOrThrow()).toBe('number');
       expect(duration).toBeLessThan(isCI ? 1000 : 500); // Allow 1s in CI, 500ms locally
     });
 

@@ -127,7 +127,7 @@ describe('Edge Cases Tests', () => {
       const empty = {};
       
       expect(prop('nonexistent', () => 'missing')(empty).isFailure()).toBe(true);
-      expect(pick(['a', 'b'], (key: any) => `missing ${key}`)(empty).getOrThrow()).toEqual({});
+      expect(pick(['a', 'b'], (key: any) => `missing ${key}`)(empty).isFailure()).toBe(true);
       expect(merge((_key: string, _target: unknown, source: unknown) => success(source))({ a: 1 }).getOrThrow()).toEqual({ a: 1 });
     });
 
@@ -136,7 +136,7 @@ describe('Edge Cases Tests', () => {
       
       expect(prop('a', () => 'missing')(obj).getOrThrow()).toBe(1);
       expect(prop('b', () => 'missing')(obj).getOrThrow()).toBe(null);
-      expect(prop('c', () => 'missing')(obj).getOrThrow()).toBe(undefined);
+      expect(prop('c', () => 'missing')(obj).isFailure()).toBe(true); // undefined values are treated as missing
       expect(prop('d', () => 'missing')(obj).getOrThrow()).toBe('hello');
     });
 
@@ -200,7 +200,8 @@ describe('Edge Cases Tests', () => {
       const obj = { a: 1, b: 2 };
       const result = pick(['a', 'nonexistent', 'b', 'alsononexistent'], (key: any) => `missing ${key}`)(obj);
       
-      expect(result.getOrThrow()).toEqual({ a: 1, b: 2 });
+      expect(result.isFailure()).toBe(true);
+      expect(result.fold(err => err, () => null)).toBe('missing nonexistent');
     });
 
     it('should handle merge with conflicting properties', () => {
@@ -346,16 +347,18 @@ describe('Edge Cases Tests', () => {
     it('should handle errors in fold functions', () => {
       const result = success(42);
       
-      result.fold(
-        error => error,
-        value => {
-          if (value > 40) throw new Error('Value too large');
-          return value * 2;
-        }
-      );
+      // Test that fold executes the success callback and can throw
+      expect(() => {
+        result.fold(
+          error => error,
+          value => {
+            if (value > 40) throw new Error('Value too large');
+            return value * 2;
+          }
+        );
+      }).toThrow('Value too large');
       
-      // Since fold doesn't catch exceptions, this would throw in real usage
-      // We test the structure instead
+      // The original result is unchanged
       expect(result.isSuccess()).toBe(true);
       expect(result.getOrThrow()).toBe(42);
     });
