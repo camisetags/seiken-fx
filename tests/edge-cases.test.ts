@@ -143,7 +143,9 @@ describe('Edge Cases Tests', () => {
       }
 
       // Merge operations should work efficiently even with large objects
-      const result = merge((_key: string, _target: unknown, source: unknown) => success(source))(largeData);
+      const result = merge((_key: string, _target: unknown, source: unknown) => success(source))(
+        largeData,
+      );
       expect(result.isSuccess()).toBe(true);
       expect(Object.keys(result.getOrThrow()).length).toBe(10000);
     });
