@@ -42,6 +42,51 @@ function isFailurePattern<E, A, R>(
   return pattern[0] === failure;
 }
 
+/**
+ * Chain object for try/catch operations that requires .catch() to be called.
+ * This ensures that errors are always handled before continuing the chain.
+ *
+ * IMPORTANT: This class intentionally does NOT implement Result methods
+ * to force the use of .catch() or .finally() before continuing the chain.
+ */
+class TryChain<E, A, B> {
+  constructor(
+    private readonly result: Result<E, A>,
+    private readonly operation: (value: A) => B,
+  ) {}
+
+  /**
+   * Handles any errors that occurred during the try operation.
+   * @param errorHandler Function to transform the error
+   * @returns A Result containing the operation result or the transformed error
+   */
+  catch<F>(errorHandler: (error: unknown) => F): Result<F, B> {
+    if (this.result.isFailure()) {
+      // If the original result was a failure, handle the original error
+      const failureResult = this.result as Failure<E>;
+      return failure(errorHandler(failureResult.error));
+    }
+
+    try {
+      const successResult = this.result as Success<A>;
+      const result = this.operation(successResult.value);
+      return success(result);
+    } catch (error) {
+      return failure(errorHandler(error));
+    }
+  }
+
+  /**
+   * Executes cleanup code and then requires .catch() to be called.
+   * @param cleanup Function to execute for cleanup
+   * @returns A TryChain that still requires .catch() to be called
+   */
+  finally(cleanup: () => void): TryChain<E, A, B> {
+    cleanup();
+    return this;
+  }
+}
+
 // Define the Result type
 
 class Success<A> {
@@ -69,8 +114,8 @@ class Success<A> {
    * @param f Function to transform the value
    * @returns A new Success containing the transformed value
    */
-  map<B>(f: (a: A) => B): Result<never, B> {
-    return success(f(this.value));
+  map<B>(f: (a: A) => B): Success<B> {
+    return success(f(this.value)) as Success<B>;
   }
 
   /**
@@ -87,8 +132,8 @@ class Success<A> {
    * @param _f Function to transform the error (unused)
    * @returns This Success instance unchanged
    */
-  mapError<E1>(_f: (e: never) => E1): Result<E1, A> {
-    return this as unknown as Result<E1, A>;
+  mapError<E1>(_f: (e: never) => E1): Success<A> {
+    return this;
   }
 
   /**
@@ -96,7 +141,7 @@ class Success<A> {
    * @param _f Function to recover from error (unused)
    * @returns This Success instance unchanged
    */
-  recover<A1>(_f: (e: never) => A1): Result<never, A> {
+  recover<A1>(_f: (e: never) => A1): Success<A> {
     return this;
   }
 
@@ -176,7 +221,7 @@ class Success<A> {
         if (this.matchesDestructuring(destructure)) {
           const result = callback(this.value);
           // If callback returns a Result, return it; otherwise wrap in Success
-          return this.isResult(result) ? result : success(result);
+          return this.isResult(result) ? result : (success(result) as any);
         }
       } else if (isGuardPattern(pattern)) {
         // Pattern with guard: [success, guard, callback]
@@ -188,14 +233,14 @@ class Success<A> {
         if (guard(this.value)) {
           const result = callback(this.value);
           // If callback returns a Result, return it; otherwise wrap in Success
-          return this.isResult(result) ? result : success(result);
+          return this.isResult(result) ? result : (success(result) as any);
         }
       } else if (isBasicSuccessPattern(pattern)) {
         // Basic success pattern: [success, callback]
         const [, callback] = pattern as [typeof success, (value: A) => R | Result<any, R>];
         const result = callback(this.value);
         // If callback returns a Result, return it; otherwise wrap in Success
-        return this.isResult(result) ? result : success(result);
+        return this.isResult(result) ? result : (success(result) as any);
       }
     }
 
@@ -227,6 +272,25 @@ class Success<A> {
     }
 
     return true;
+  }
+
+  /**
+   * Executes a function that might throw an exception, returning a TryChain.
+   * @param operation Function that takes the current value and might throw
+   * @returns A TryChain that requires .catch() to be called
+   */
+  try<B>(operation: (value: A) => B): TryChain<any, A, B> {
+    return new TryChain(this, operation);
+  }
+
+  /**
+   * Transforms errors in a Failure Result. For Success, this method does nothing.
+   * @param errorHandler Function to transform the error
+   * @returns This Success instance unchanged
+   */
+  catch<F>(_errorHandler: (error: unknown) => F): Success<A> {
+    // For Success, there's no error to handle, so return unchanged
+    return this;
   }
 }
 
@@ -298,8 +362,8 @@ class Failure<E> {
    * @param _f Function to transform the value (unused)
    * @returns This Failure instance unchanged
    */
-  map<B>(_f: (a: never) => B): Result<E, never> {
-    return this as unknown as Result<E, never>;
+  map<B>(_f: (a: never) => B): Failure<E> {
+    return this;
   }
 
   /**
@@ -307,8 +371,8 @@ class Failure<E> {
    * @param _f Function to chain with (unused)
    * @returns This Failure instance unchanged
    */
-  flatMap<E1, B>(_f: (a: never) => Result<E1, B>): Result<E | E1, never> {
-    return this as unknown as Result<E, never>;
+  flatMap<E1, B>(_f: (a: never) => Result<E1, B>): Failure<E> {
+    return this;
   }
 
   /**
@@ -316,8 +380,8 @@ class Failure<E> {
    * @param f Function to transform the error
    * @returns A new Failure containing the transformed error
    */
-  mapError<E1>(f: (e: E) => E1): Result<E1, never> {
-    return failure(f(this.error));
+  mapError<E1>(f: (e: E) => E1): Failure<E1> {
+    return failure(f(this.error)) as Failure<E1>;
   }
 
   /**
@@ -325,8 +389,8 @@ class Failure<E> {
    * @param f Function that transforms the error into a success value
    * @returns A Success containing the recovered value
    */
-  recover<A>(f: (e: E) => A): Result<never, A> {
-    return success(f(this.error));
+  recover<A>(f: (e: E) => A): Success<A> {
+    return success(f(this.error)) as Success<A>;
   }
 
   /**
@@ -396,7 +460,7 @@ class Failure<E> {
         const [, callback] = pattern as [typeof failure, (error: E) => R | Result<E, R>];
         const result = callback(this.error);
         // If callback returns a Result, return it; otherwise wrap in Success
-        return this.isResult(result) ? result : success(result);
+        return this.isResult(result) ? result : (success(result) as any);
       }
     }
 
@@ -412,6 +476,25 @@ class Failure<E> {
   private isResult(value: any): value is Result<any, any> {
     return value && typeof value === 'object' && '_tag' in value;
   }
+
+  /**
+   * Does nothing for Failure since there's no value to operate on.
+   * @param _operation Function that might throw (unused for Failure)
+   * @returns A TryChain that will handle the failure case
+   */
+  try<B>(_operation: (value: never) => B): TryChain<E, never, B> {
+    // For Failure, return a TryChain that will handle the failure case
+    return new TryChain(this, _operation);
+  }
+
+  /**
+   * Transforms the error in this Failure using the provided error handler.
+   * @param errorHandler Function to transform the error
+   * @returns A new Failure containing the transformed error
+   */
+  catch<F>(errorHandler: (error: E) => F): Failure<F> {
+    return failure(errorHandler(this.error)) as Failure<F>;
+  }
 }
 
 /**
@@ -419,7 +502,7 @@ class Failure<E> {
  * @param value The value to wrap in a Success
  * @returns A Result representing success
  */
-export const success = <A>(value: A): Result<never, A> => {
+export const success = <A>(value: A): Success<A> => {
   return new Success(value);
 };
 
@@ -428,7 +511,7 @@ export const success = <A>(value: A): Result<never, A> => {
  * @param error The error to wrap in a Failure
  * @returns A Result representing failure
  */
-export const failure = <E>(error: E): Result<E, never> => {
+export const failure = <E>(error: E): Failure<E> => {
   return new Failure(error);
 };
 
@@ -488,12 +571,12 @@ export const all = <E, A>(results: readonly Result<E, A>[]): Result<E, readonly 
 
   for (const result of results) {
     if (result.isFailure()) {
-      return result as Result<E, never>;
+      return result as any;
     }
     if (result.isSuccess() && 'value' in result) {
       values.push(result.value);
     }
   }
 
-  return success(values);
+  return success(values) as any;
 };

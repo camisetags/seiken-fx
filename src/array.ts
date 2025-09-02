@@ -14,12 +14,12 @@ export const map =
     for (const item of arr) {
       const result = fn(item);
       if (result.isFailure()) {
-        return result as Result<E, never>;
+        return result;
       }
       results.push(result);
     }
 
-    return success(results.map(r => (r as any).value));
+    return success(results.map(r => (r as any).value)) as any;
   };
 
 /**
@@ -37,7 +37,7 @@ export const filter =
       const result = predicate(item);
 
       if (result.isFailure()) {
-        return result as Result<E, never>;
+        return result;
       }
 
       if (result.getOrElse(false)) {
@@ -45,7 +45,7 @@ export const filter =
       }
     }
 
-    return success(filtered);
+    return success(filtered) as any;
   };
 
 /**
@@ -90,7 +90,7 @@ export const head = <T, E>(arr: readonly T[], errorFn: () => E): Result<E, T> =>
  * @returns Success with array of remaining elements (empty array if original was empty)
  */
 export const tail = <T>(arr: readonly T[]): Result<never, readonly T[]> => {
-  return success(arr.slice(1));
+  return success(arr.slice(1)) as any;
 };
 
 /**
