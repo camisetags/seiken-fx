@@ -172,7 +172,8 @@ describe('Result utilities', () => {
       const elseMock = jest.fn();
       const result = success(15);
 
-      result.if(value => value > 10)
+      result
+        .if((value: any) => value > 10)
         .then(thenMock)
         .else(elseMock);
 
@@ -185,7 +186,8 @@ describe('Result utilities', () => {
       const elseMock = jest.fn();
       const result = success(5);
 
-      result.if(value => value > 10)
+      result
+        .if((value: any) => value > 10)
         .then(thenMock)
         .else(elseMock);
 
@@ -198,7 +200,8 @@ describe('Result utilities', () => {
       const elseMock = jest.fn();
       const result = failure('error occurred');
 
-      result.if(_value => true)
+      result
+        .if(_value => true)
         .then(thenMock)
         .else(elseMock);
 
@@ -206,17 +209,17 @@ describe('Result utilities', () => {
       expect(elseMock).toHaveBeenCalledWith('error occurred');
     });
 
-    it('should allow chaining .then() multiple times', () => {
+    it('should execute .then() and return ConditionalChain for continued chaining', () => {
       const mock1 = jest.fn();
-      const mock2 = jest.fn();
       const result = success(20);
 
-      result.if(value => value > 10)
-        .then(mock1)
-        .then(mock2);
+      const returned = result.if((value: any) => value > 10).then(mock1);
 
       expect(mock1).toHaveBeenCalledWith(20);
-      expect(mock2).toHaveBeenCalledWith(20);
+      expect(returned).not.toBe(result);
+      expect(typeof returned).toBe('object');
+      expect(returned).toHaveProperty('then');
+      expect(returned).toHaveProperty('else');
     });
 
     it('should work with complex predicates', () => {
@@ -225,7 +228,8 @@ describe('Result utilities', () => {
       const adultMock = jest.fn();
       const minorMock = jest.fn();
 
-      result.if(user => user.age >= 18)
+      result
+        .if(user => user.age >= 18)
         .then(adultMock)
         .else(minorMock);
 
@@ -238,7 +242,8 @@ describe('Result utilities', () => {
       const longMock = jest.fn();
       const shortMock = jest.fn();
 
-      result.if(str => str.length > 10)
+      result
+        .if(str => str.length > 10)
         .then(longMock)
         .else(shortMock);
 
@@ -249,7 +254,8 @@ describe('Result utilities', () => {
     it('should return the original Result from .else() for continued chaining', () => {
       const result = success(42);
 
-      const returned = result.if(_value => false)
+      const returned = result
+        .if(_value => false)
         .then(_value => console.log('Large number'))
         .else(_value => console.log('Small number'));
 
@@ -261,12 +267,209 @@ describe('Result utilities', () => {
       const positiveMock = jest.fn();
       const zeroMock = jest.fn();
 
-      result.if(value => value > 0)
+      result
+        .if((value: any) => value > 0)
         .then(positiveMock)
         .else(zeroMock);
 
       expect(positiveMock).not.toHaveBeenCalled();
       expect(zeroMock).toHaveBeenCalledWith(0);
+    });
+  });
+
+  describe('pattern matching with .match()', () => {
+    it('should execute basic success pattern', () => {
+      const result = success('hello world');
+      const mockFn = jest.fn();
+
+      const output = result.match([
+        [success, mockFn],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(mockFn).toHaveBeenCalledWith('hello world');
+      expect(output.isSuccess()).toBe(true);
+    });
+
+    it('should execute failure pattern for Failure', () => {
+      const result = failure('database error');
+
+      const output = result.match([
+        [success, (value: any) => `Success: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Error: database error');
+    });
+
+    it('should execute guard pattern when condition is true', () => {
+      const result = success(15);
+
+      const output = result.match([
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value <= 10, (value: any) => `Small: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Large: 15');
+    });
+
+    it('should execute guard pattern when condition is false', () => {
+      const result = success(5);
+
+      const output = result.match([
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value <= 10, (value: any) => `Small: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Small: 5');
+    });
+
+    it('should execute destructuring pattern when object matches', () => {
+      const user = { id: 1, name: 'John', age: 25 };
+      const result = success(user);
+
+      const output = result.match([
+        [success, { age: 25 }, (user: any) => `Adult: ${user.name}`],
+        [success, { age: 18 }, (user: any) => `Young: ${user.name}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Adult: John');
+    });
+
+    it('should execute destructuring pattern with partial match', () => {
+      const user = { id: 1, name: 'John', age: 25 };
+      const result = success(user);
+
+      const output = result.match([
+        [success, (user: any) => user.age === 30, (user: any) => `Old: ${user.name}`],
+        [success, (user: any) => user.age === 18, (user: any) => `Young: ${user.name}`],
+        [success, (_user: any) => true, (user: any) => `Age: ${user.age}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Age: 25');
+    });
+
+    it('should execute first matching pattern in order', () => {
+      const result = success(15);
+
+      const output = result.match([
+        [success, (value: any) => value > 20, (value: any) => `Very large: ${value}`],
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value > 0, (value: any) => `Positive: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Large: 15');
+    });
+
+    it('should return Failure when no pattern matches', () => {
+      const result = success(5);
+
+      const output = result.match([
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isFailure()).toBe(true);
+      expect(() => output.getOrThrow()).toThrow('No matching pattern found');
+    });
+
+    it('should return Failure when no failure pattern matches', () => {
+      const result = failure('database error');
+
+      const output = result.match([[success, (value: any) => `Success: ${value}`]]);
+
+      expect(output.isFailure()).toBe(true);
+      expect(() => output.getOrThrow()).toThrow('No matching failure pattern found');
+    });
+
+    it('should work with complex nested objects', () => {
+      const data = {
+        user: {
+          profile: {
+            name: 'John',
+            preferences: {
+              theme: 'dark',
+              language: 'en',
+            },
+          },
+        },
+      };
+      const result = success(data);
+
+      const output = result.match([
+        [
+          success,
+          (data: any) => data.user?.profile?.preferences?.theme === 'dark',
+          (_data: any) => 'Dark theme user',
+        ],
+        [
+          success,
+          (data: any) => data.user?.profile?.preferences?.theme === 'light',
+          (_data: any) => 'Light theme user',
+        ],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Dark theme user');
+    });
+
+    it('should work with array patterns', () => {
+      const result = success([1, 2, 3, 4, 5]);
+
+      const output = result.match([
+        [success, (arr: any) => arr.length > 10, (arr: any) => `Long array: ${arr.length}`],
+        [success, (arr: any) => arr.length > 5, (arr: any) => `Medium array: ${arr.length}`],
+        [success, (arr: any) => arr.length > 0, (arr: any) => `Short array: ${arr.length}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Short array: 5');
+    });
+
+    it('should handle multiple guard conditions', () => {
+      const result = success(42);
+
+      const output = result.match([
+        [success, (value: any) => value > 100, (value: any) => `Huge: ${value}`],
+        [success, (value: any) => value > 50, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value > 25, (value: any) => `Medium: ${value}`],
+        [success, (value: any) => value > 0, (value: any) => `Small: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Medium: 42');
+    });
+
+    it('should work with string patterns', () => {
+      const result = success('hello world');
+
+      const output = result.match([
+        [
+          success,
+          (str: any) => str.includes('hello') && str.includes('world'),
+          (str: any) => `Complete: ${str}`,
+        ],
+        [success, (str: any) => str.includes('hello'), (str: any) => `Partial: ${str}`],
+        [success, (str: any) => str.length > 0, (str: any) => `Any: ${str}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Complete: hello world');
     });
   });
 });

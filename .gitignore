@@ -68,3 +68,7 @@ Thumbs.db
 ehthumbs.db
 ehthumbs_vista.db
 Desktop.ini
+
+# Temporary files and folders
+/tmp
+tmp/

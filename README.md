@@ -9,6 +9,8 @@
 
 seiken-fx is a TypeScript-first functional programming library that makes **error handling predictable, composable, and type-safe**. No more runtime surprises – every operation tells you exactly what can go wrong.
 
+**🚀 Version 0.5.0** - Now with **Conditional Execution** and **Result-based Pattern Matching**!
+
 ## ✨ Features
 
 - 🛡️ **Result-first design** - All operations use `Result<E, A>` for explicit error handling
