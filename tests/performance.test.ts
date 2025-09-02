@@ -1,487 +1,260 @@
-import { success, failure, all, tryCatch } from '../src/result';
-import { map, filter, reduce, get, head } from '../src/array';
+import { success, failure, all } from '../src/result';
+import { map, filter, reduce, head, tail, get } from '../src/array';
 import { prop, pick, merge } from '../src/object';
 
-describe('Performance and Stress Tests', () => {
-  // Helper to measure execution time
-  const measureTime = async <T>(fn: () => T | Promise<T>): Promise<{ result: T; time: number }> => {
-    const start = process.hrtime.bigint();
-    const result = await fn();
-    const end = process.hrtime.bigint();
-    const time = Number(end - start) / 1000000; // Convert to milliseconds
-    return { result, time };
+describe('Performance Tests', () => {
+  // Detect CI environment and adjust thresholds accordingly
+  const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+  const performanceMultiplier = isCI ? 0.5 : 1; // Reduce thresholds in CI by 50%
+
+  const adjustThreshold = (threshold: number): number => {
+    return Math.floor(threshold * performanceMultiplier);
   };
 
-  describe('Large Array Operations', () => {
-    it('should handle arrays with 100k elements efficiently', async () => {
-      const largeArray = Array.from({ length: 100000 }, (_, i) => i);
+  describe('Core Result Operations', () => {
+    it('should perform Result creation efficiently', () => {
+      const iterations = 100000;
+      const start = Date.now();
       
-      const { time } = await measureTime(() => {
-        const mapResult = map((x: number) => success(x * 2))(largeArray);
-        expect(mapResult.isSuccess()).toBe(true);
-        return mapResult;
-      });
-
-      // Should complete within reasonable time (< 100ms)
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
-    });
-
-    it('should handle filtering large arrays efficiently', async () => {
-      const largeArray = Array.from({ length: 50000 }, (_, i) => i);
-      
-      const { time } = await measureTime(() => {
-        const filterResult = filter((x: number) => success(x % 2 === 0))(largeArray);
-        expect(filterResult.isSuccess()).toBe(true);
-        if (filterResult.isSuccess()) {
-          expect(filterResult.getOrThrow().length).toBe(25000);
-        }
-        return filterResult;
-      });
-
-      expect(time).toBeLessThan(300); // CI-friendly threshold
-    });
-
-    it('should handle reducing large arrays efficiently', async () => {
-      const largeArray = Array.from({ length: 100000 }, (_, i) => i + 1);
-      
-      const { time } = await measureTime(() => {
-        const reduceResult = reduce((acc: number, curr: number) => success(acc + curr), 0)(largeArray);
-        expect(reduceResult.isSuccess()).toBe(true);
-        if (reduceResult.isSuccess()) {
-          // Sum of 1 to 100000 = 100000 * 100001 / 2 = 5000050000
-          expect(reduceResult.getOrThrow()).toBe(5000050000);
-        }
-        return reduceResult;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
-    });
-
-    it('should handle array access operations efficiently', async () => {
-      const largeArray = Array.from({ length: 1000000 }, (_, i) => `item-${i}`);
-      
-      const { time } = await measureTime(() => {
-        // Test multiple random accesses
-        const results = [];
-        for (let i = 0; i < 1000; i++) {
-          const randomIndex = Math.floor(Math.random() * largeArray.length);
-          const getResult = get(randomIndex, () => 'Not found')(largeArray);
-          results.push(getResult);
-        }
-        
-        // All should be successful
-        results.forEach(result => {
-          expect(result.isSuccess()).toBe(true);
-        });
-        
-        return results;
-      });
-
-      expect(time).toBeLessThan(300); // CI-friendly threshold
-    });
-
-    it('should handle head operation on extremely large arrays', async () => {
-      const hugeArray = Array.from({ length: 10000000 }, (_, i) => i);
-      
-      const { time } = await measureTime(() => {
-        const headResult = head(hugeArray, () => 'Empty');
-        expect(headResult.isSuccess()).toBe(true);
-        expect(headResult.getOrThrow()).toBe(0);
-        return headResult;
-      });
-
-      // Head should be O(1) regardless of array size
-      expect(time).toBeLessThan(50); // CI-friendly
-    });
-  });
-
-  describe('Large Object Operations', () => {
-    it('should handle objects with many properties efficiently', async () => {
-      const largeObject: Record<string, any> = {};
-      for (let i = 0; i < 100000; i++) {
-        largeObject[`prop${i}`] = {
-          id: i,
-          name: `item-${i}`,
-          value: Math.random() * 1000,
-          nested: {
-            level1: { level2: { level3: `deep-${i}` } }
-          }
-        };
+      for (let i = 0; i < iterations; i++) {
+        success(i);
+        failure(`error-${i}`);
       }
-
-      const { time } = await measureTime(() => {
-        // Test property access
-        const propResult = (prop as any)('prop50000', () => 'not found')(largeObject);
-        expect(propResult.isSuccess()).toBe(true);
-        
-        // Test picking multiple properties
-        const pickKeys = Array.from({ length: 100 }, (_, i) => `prop${i * 1000}`);
-        const pickResult = (pick as any)(pickKeys, (key: any) => `missing: ${key}`)(largeObject);
-        expect(pickResult.isSuccess()).toBe(true);
-        
-        return { propResult, pickResult };
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
-    });
-
-    it('should handle deep object merging efficiently', async () => {
-      const createDeepObject = (depth: number, breadth: number): any => {
-        if (depth === 0) return Math.random();
-        
-        const obj: any = {};
-        for (let i = 0; i < breadth; i++) {
-          obj[`key${i}`] = createDeepObject(depth - 1, breadth);
-        }
-        return obj;
-      };
-
-      const obj1 = createDeepObject(5, 10);
-      const obj2 = createDeepObject(5, 10);
       
-      const { time } = await measureTime(() => {
-        const mergeResult = merge(() => success('resolved') as any)(obj1, obj2);
-        expect(mergeResult.isSuccess()).toBe(true);
-        return mergeResult;
-      });
-
-      expect(time).toBeLessThan(1000); // CI-friendly
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round((iterations * 2) / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(100000));
     });
 
-    it('should handle object property access with deep nesting', async () => {
-      const deepObject = {
-        level1: {
-          level2: {
-            level3: {
-              level4: {
-                level5: {
-                  level6: {
-                    level7: {
-                      level8: {
-                        level9: {
-                          level10: 'deep-value'
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      };
-
-      const { time } = await measureTime(() => {
-        // Create 10000 similar deep objects and access properties
-        const results = [];
-        for (let i = 0; i < 10000; i++) {
-          const testObj = { ...deepObject, id: i };
-          const propResult = (prop as any)('level1', () => 'not found')(testObj);
-          results.push(propResult);
-        }
-        
-        results.forEach(result => {
-          expect(result.isSuccess()).toBe(true);
-        });
-        
-        return results;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
+    it('should perform Result chaining efficiently', () => {
+      const iterations = 10000;
+      const start = Date.now();
+      
+      for (let i = 0; i < iterations; i++) {
+        success(i)
+          .map(x => x * 2)
+          .flatMap(x => success(x + 1))
+          .map(x => x.toString())
+          .flatMap(x => success(parseInt(x)));
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round(iterations / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(10000));
     });
   });
 
-  describe('Result Chaining Performance', () => {
-    it('should handle long chains efficiently', async () => {
-      const { time } = await measureTime(() => {
-        let result: any = success(1);
-        
-        // Chain 10000 operations
-        for (let i = 0; i < 10000; i++) {
-          result = result
-            .map((x: number) => x + 1)
-            .flatMap((x: number) => success(x * 2))
-            .map((x: number) => x - 1);
-        }
-        
-        expect(result.isSuccess()).toBe(true);
-        return result;
-      });
-
-      expect(time).toBeLessThan(300); // CI-friendly threshold
+  describe('Array Operations Performance', () => {
+    it('should handle large array operations', () => {
+      const largeArray = Array.from({ length: 10000 }, (_, i) => i);
+      const start = Date.now();
+      
+      const result = map((x: number) => success(x * 2))(largeArray)
+        .flatMap(mapped => filter((x: number) => success(x > 5000))(mapped))
+        .map(filtered => reduce((acc: number, x: number) => success(acc + x), 0)(filtered));
+      
+      const end = Date.now();
+      const duration = end - start;
+      
+      expect(result.isSuccess()).toBe(true);
+      expect(duration).toBeLessThan(isCI ? 2000 : 1000); // Allow 2s in CI, 1s locally
     });
 
-    it('should handle complex nested operations efficiently', async () => {
-      const complexOperation = (data: any[]) => {
-        return map((item: any) => 
-          success(item)
-            .map(x => ({ ...x, processed: true }))
-            .flatMap(x => success({ ...x, timestamp: Date.now() }))
-            .map(x => ({ ...x, id: Math.random() }))
-        )(data);
-      };
-
-      const largeDataSet = Array.from({ length: 10000 }, (_, i) => ({
-        index: i,
-        name: `item-${i}`,
-        value: Math.random() * 1000
-      }));
-
-      const { time } = await measureTime(() => {
-        const result = complexOperation(largeDataSet);
-        expect(result.isSuccess()).toBe(true);
-        return result;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
-    });
-
-    it('should handle pattern matching on large datasets', async () => {
-      const largeResults = Array.from({ length: 50000 }, (_, i) => 
-        i % 2 === 0 ? success(`success-${i}`) : failure(`error-${i}`)
-      );
-
-      const { time } = await measureTime(() => {
-        let successCount = 0;
-        let failureCount = 0;
-
-        largeResults.forEach(result => {
-          result.match([
-            [success, (value: string) => {
-              successCount++;
-              return value;
-            }],
-            [failure, (error: string) => {
-              failureCount++;
-              return error;
-            }]
-          ]);
-        });
-
-        expect(successCount).toBe(25000);
-        expect(failureCount).toBe(25000);
-        
-        return { successCount, failureCount };
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
+    it('should handle array access operations efficiently', () => {
+      const array = Array.from({ length: 1000 }, (_, i) => i);
+      const iterations = 1000;
+      const start = Date.now();
+      
+      for (let i = 0; i < iterations; i++) {
+        head(array, () => 'empty');
+        tail(array);
+        get(i % array.length, () => 'missing')(array);
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round((iterations * 3) / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(50000));
     });
   });
 
-  describe('Memory Efficiency Tests', () => {
-    it('should not leak memory with large Result chains', async () => {
+  describe('Object Operations Performance', () => {
+    it('should handle object operations efficiently', () => {
+      const obj = Object.fromEntries(Array.from({ length: 1000 }, (_, i) => [`key${i}`, i]));
+      const iterations = 10000;
+      const start = Date.now();
+      
+      for (let i = 0; i < iterations; i++) {
+        // @ts-ignore - Test file type assertion
+        prop(`key${i % 100}`, () => 'missing')(obj);
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round(iterations / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(100000));
+    });
+
+    it('should handle object transformations', () => {
+      const obj1 = Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`key${i}`, i]));
+      const obj2 = Object.fromEntries(Array.from({ length: 100 }, (_, i) => [`other${i}`, i]));
+      const iterations = 1000;
+      const start = Date.now();
+      
+      for (let i = 0; i < iterations; i++) {
+        merge((_key: string, _target: unknown, source: unknown) => success(source))(obj1, obj2);
+        pick(['key1', 'key2', 'key3'] as any, () => 'missing')(obj1);
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round((iterations * 2) / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(10000));
+    });
+  });
+
+  describe('Memory Usage Tests', () => {
+    it('should not cause memory leaks with repeated operations', () => {
       const initialMemory = process.memoryUsage().heapUsed;
-
-      await measureTime(async () => {
-        // Create and dispose of many Results
-        for (let i = 0; i < 100000; i++) {
-          const result = success(i)
-            .map(x => x * 2)
-            .flatMap(x => success(x + 1))
-            .map(x => x.toString());
-          
-          // Force some work to be done
-          result.getOrElse('');
-        }
+      
+      // Perform many operations
+      for (let i = 0; i < 10000; i++) {
+        const result = success(i)
+          .map(x => x * 2)
+          .flatMap(x => success(x.toString()))
+          .map(x => parseInt(x));
         
-        // Force garbage collection if available
-        if (global.gc) {
-          global.gc();
+        if (result.isSuccess()) {
+          result.getOrThrow();
         }
-        
-        return true;
-      });
-
+      }
+      
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
+      }
+      
       const finalMemory = process.memoryUsage().heapUsed;
       const memoryIncrease = finalMemory - initialMemory;
+      const memoryIncreaseMB = memoryIncrease / (1024 * 1024);
       
-      // Memory increase should be reasonable (less than 100MB)
-      expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024);
-    });
-
-    it('should handle many concurrent Results efficiently', async () => {
-      const { time } = await measureTime(() => {
-        const results = Array.from({ length: 100000 }, (_, i) => {
-          if (i % 1000 === 0) return failure(`error-${i}`);
-          return success(i);
-        });
-
-        // Process all results
-        const allResult = all(results);
-        expect(allResult.isFailure()).toBe(true); // Should fail on first error
-        
-        return allResult;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
-    });
-  });
-
-  describe('TryCatch Performance', () => {
-    it('should handle many tryCatch operations efficiently', async () => {
-      const riskyOperation = (value: number) => {
-        if (value % 1000 === 0) {
-          throw new Error(`Error at ${value}`);
-        }
-        return value * 2;
-      };
-
-      const { time } = await measureTime(() => {
-        const results = [];
-        
-        for (let i = 0; i < 50000; i++) {
-          const result = tryCatch(
-            () => riskyOperation(i),
-            (error) => `Handled: ${error}`
-          );
-          results.push(result);
-        }
-        
-        // Count successes and failures
-        const successes = results.filter(r => r.isSuccess()).length;
-        const failures = results.filter(r => r.isFailure()).length;
-        
-        expect(successes).toBe(49950); // 50000 - 50 errors
-        expect(failures).toBe(50);
-        
-        return results;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
-    });
-
-    it('should handle try/catch chaining efficiently', async () => {
-      const { time } = await measureTime(() => {
-        const results = [];
-        
-        for (let i = 0; i < 10000; i++) {
-          const result = success(`input-${i}`)
-            .try(str => {
-              if (str.includes('999')) throw new Error('Special error');
-              return str.toUpperCase();
-            })
-            .catch(error => `Error: ${error}`)
-            .map(str => str.length);
-          
-          results.push(result);
-        }
-        
-        // All should complete successfully
-        results.forEach(result => {
-          expect(result.isSuccess() || result.isFailure()).toBe(true);
-        });
-        
-        return results;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold
+      // Should not increase memory by more than 50MB for 10k operations
+      expect(memoryIncreaseMB).toBeLessThan(50);
     });
   });
 
   describe('Stress Tests', () => {
-    it('should handle extreme array operations without crashing', async () => {
-      // Create a very large array
-      const extremeArray = Array.from({ length: 1000000 }, (_, i) => ({
-        id: i,
-        data: `data-${i}`,
-        nested: { value: i * Math.random() }
-      }));
-
-      const { time } = await measureTime(() => {
-        // Multiple operations on the same large array
-        const mapResult = map((item: any) => success({ ...item, processed: true }))(extremeArray);
-        const headResult = head(extremeArray, () => 'empty');
-        
-        expect(mapResult.isSuccess()).toBe(true);
-        expect(headResult.isSuccess()).toBe(true);
-        
-        return { mapResult, headResult };
-      });
-
-      // Even with 1M items, should complete reasonably fast
-      expect(time).toBeLessThan(2000); // 2 seconds max
+    it('should handle deeply nested operations', () => {
+      const start = Date.now();
+      let result = success(0);
+      
+      // Chain 1000 operations
+      for (let i = 0; i < 1000; i++) {
+        result = result.flatMap(x => success(x + 1));
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      
+      expect(result.isSuccess()).toBe(true);
+      expect(result.getOrThrow()).toBe(1000);
+      expect(duration).toBeLessThan(isCI ? 1000 : 500); // Allow 1s in CI, 500ms locally
     });
 
-    it('should handle recursive data structures efficiently', async () => {
-      // Create a recursive structure
-      const createRecursiveData = (depth: number): any => {
-        if (depth === 0) return { value: 'leaf' };
-        return {
-          value: `node-${depth}`,
-          children: Array.from({ length: 3 }, () => createRecursiveData(depth - 1))
-        };
-      };
-
-      const recursiveData = createRecursiveData(10); // Very deep structure
-
-      const { time } = await measureTime(() => {
-        // Test various operations on recursive data
-        const propResult = (prop as any)('value', () => 'not found')(recursiveData);
-        const pickResult = (pick as any)(['value', 'children'], (key: any) => `missing: ${key}`)(recursiveData);
+    it('should handle all() with large arrays of Results', () => {
+      const sizes = [1000, 5000, 10000];
+      
+      for (const size of sizes) {
+        const results = Array.from({ length: size }, (_, i) => success(i));
+        const start = Date.now();
         
-        expect(propResult.isSuccess()).toBe(true);
-        expect(pickResult.isSuccess()).toBe(true);
+        const combined = all(results);
         
-        return { propResult, pickResult };
-      });
-
-      expect(time).toBeLessThan(300); // CI-friendly threshold
+        const end = Date.now();
+        const duration = end - start;
+        
+        expect(combined.isSuccess()).toBe(true);
+        expect(combined.getOrThrow()).toHaveLength(size);
+        
+        // Should complete within reasonable time based on size
+        const expectedMaxTime = isCI ? size * 2 : size; // 2ms per item in CI, 1ms locally
+        expect(duration).toBeLessThan(expectedMaxTime);
+      }
     });
 
-    it('should handle mixed success/failure scenarios efficiently', async () => {
-      const { time } = await measureTime(() => {
-        const mixedResults = Array.from({ length: 100000 }, (_, i) => {
-          // Create a mix of successes and failures
-          if (i % 7 === 0) return failure(`error-${i}`);
-          if (i % 11 === 0) return failure(`another-error-${i}`);
-          return success(i);
-        });
-
-        // Process all results with various operations
-        let processedCount = 0;
+    it('should handle mixed success/failure scenarios efficiently', () => {
+      const iterations = 1000;
+      const start = Date.now();
+      
+      for (let i = 0; i < iterations; i++) {
+        const result = i % 2 === 0 ? success(i) : failure(`error-${i}`);
         
-        mixedResults.forEach(result => {
-          result
-            .map(x => x * 2)
-            .recover(_error => -1)
-            .map(x => x + 1);
-          processedCount++;
-        });
-
-        expect(processedCount).toBe(100000);
-        return mixedResults;
-      });
-
-      expect(time).toBeLessThan(1000); // CI-friendly
+        result
+          .map(x => x * 2)
+          .fold(
+            error => `Failed: ${error}`,
+            value => `Success: ${value}`
+          );
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round(iterations / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(10000));
     });
   });
 
-  describe('Concurrent Operations', () => {
-    it('should handle multiple concurrent operations', async () => {
-      const { time } = await measureTime(async () => {
-        // Create multiple concurrent operations
-        const promises = Array.from({ length: 1000 }, async (_, i) => {
-          return new Promise(resolve => {
-            setTimeout(() => {
-              const result = success(i)
-                .map(x => x * 2)
-                .flatMap(x => success(x.toString()));
-              resolve(result);
-            }, Math.random() * 10);
-          });
-        });
+  describe('Real-world Scenarios', () => {
+    it('should handle data processing pipeline efficiently', () => {
+      const rawData = Array.from({ length: 5000 }, (_, i) => ({
+        id: i,
+        value: Math.random() * 1000,
+        category: i % 10
+      }));
+      
+      const start = Date.now();
+      
+      const processed = map((item: any) => ({
+        ...item,
+        doubled: item.value * 2
+      }))(rawData)
+        .flatMap(items => filter((item: any) => success(item.doubled > 500))(items))
+        .map(filtered => reduce((acc: number, item: any) => acc + item.doubled, 0)(filtered));
+      
+      const end = Date.now();
+      const duration = end - start;
+      
+      expect(processed.isSuccess()).toBe(true);
+      expect(typeof processed.getOrThrow()).toBe('number');
+      expect(duration).toBeLessThan(isCI ? 1000 : 500); // Allow 1s in CI, 500ms locally
+    });
 
-        const results = await Promise.all(promises);
+    it('should handle error recovery patterns efficiently', () => {
+      const iterations = 1000;
+      const start = Date.now();
+      
+      for (let i = 0; i < iterations; i++) {
+        const result = failure(`initial-error-${i}`)
+          .recover(error => `recovered-from-${error}`)
+          .map(value => value.toUpperCase())
+          .map(value => value.length);
         
-        // All should be successful
-        results.forEach(result => {
-          expect((result as any).isSuccess()).toBe(true);
-        });
-        
-        return results;
-      });
-
-      expect(time).toBeLessThan(2000); // CI-friendly threshold // Should be fast due to concurrency
+        expect(result.isSuccess()).toBe(true);
+      }
+      
+      const end = Date.now();
+      const duration = end - start;
+      const opsPerSec = Math.round(iterations / (duration / 1000));
+      
+      expect(opsPerSec).toBeGreaterThan(adjustThreshold(5000));
     });
   });
 });

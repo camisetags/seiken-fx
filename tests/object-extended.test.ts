@@ -178,7 +178,7 @@ describe('Extended object utilities', () => {
 
   describe('merge', () => {
     it('should merge objects without conflicts', () => {
-      const mergeObjs = merge(() => success('resolved') as any);
+      const mergeObjs = merge(() => success('resolved'));
       const result = mergeObjs({ a: 1 }, { b: 2 }, { c: 3 });
 
       expect(result.isSuccess()).toBe(true);
@@ -187,7 +187,7 @@ describe('Extended object utilities', () => {
     });
 
     it('should handle conflicts with conflict resolver', () => {
-      const mergeObjs = merge((_key, target, source) => success(`${target}-${source}`) as any);
+      const mergeObjs = merge((_key, target, source) => success(`${target}-${source}`));
       const result = mergeObjs({ a: 'first' }, { a: 'second', b: 2 });
 
       expect(result.isSuccess()).toBe(true);
@@ -205,7 +205,7 @@ describe('Extended object utilities', () => {
     });
 
     it('should handle empty sources', () => {
-      const mergeObjs = merge(() => success('resolved') as any);
+      const mergeObjs = merge(() => success('resolved'));
       const result = mergeObjs();
 
       expect(result.isSuccess()).toBe(true);
