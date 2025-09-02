@@ -338,6 +338,62 @@ const validNumbers = filter((str: string) => {
 // Success(["1", "2", "4"])
 ```
 
+### Conditional Processing with .if().then().else()
+
+```typescript
+import { success, failure } from 'seiken-fx';
+
+function processUser(user: any) {
+  return success(user)
+    .if(u => u.role === 'admin')
+    .then(u => ({ ...u, permissions: ['read', 'write', 'delete'] }))
+    .else(u => ({ ...u, permissions: ['read'] }));
+}
+
+// Usage
+const adminUser = processUser({ name: 'John', role: 'admin' });
+const regularUser = processUser({ name: 'Jane', role: 'user' });
+
+// Both return Results with appropriate permissions
+```
+
+### Complex Logic with Pattern Matching
+
+```typescript
+import { success, failure } from 'seiken-fx';
+
+function categorizeUser(user: any) {
+  return success(user).match([
+    // Admin users with full access
+    [success, { role: 'admin', verified: true }, (u: any) => 
+      `Full Admin: ${u.name} (${u.email})`
+    ],
+    
+    // Verified regular users
+    [success, { verified: true }, (u: any) => 
+      `Verified User: ${u.name}`
+    ],
+    
+    // Unverified users
+    [success, { verified: false }, (u: any) => 
+      `Pending Verification: ${u.name}`
+    ],
+    
+    // Error cases
+    [failure, (error: string) => `Error: ${error}`]
+  ]);
+}
+
+// Usage
+const result = categorizeUser({ 
+  name: 'Alice', 
+  role: 'admin', 
+  verified: true,
+  email: 'alice@example.com'
+});
+// Returns: "Full Admin: Alice (alice@example.com)"
+```
+
 ---
 
 ## 🎯 When to Use seiken-fx
@@ -386,6 +442,30 @@ userResult
   .if(user => user.age >= 18)
   .then(user => sendWelcomeEmail(user))
   .else(user => sendParentalConsent(user));
+```
+
+### 🎭 **Elixir-Style Pattern Matching**
+Powerful `.match()` method for complex conditional logic with guards and destructuring:
+```typescript
+// Basic pattern matching
+result.match([
+  [success, (value: number) => `Number: ${value}`],
+  [failure, (error: string) => `Error: ${error}`]
+]);
+
+// Pattern matching with guards
+result.match([
+  [success, (value: number) => value > 10, (value: number) => `Large: ${value}`],
+  [success, (value: number) => value <= 10, (value: number) => `Small: ${value}`],
+  [failure, (error: string) => `Failed: ${error}`]
+]);
+
+// Complex destructuring patterns
+userResult.match([
+  [success, { role: 'admin' }, (user: any) => `Admin: ${user.name}`],
+  [success, { role: 'user' }, (user: any) => `User: ${user.name}`],
+  [failure, (error: string) => `Error: ${error}`]
+]);
 ```
 
 ### 🔄 **Dual Promise Integration**
@@ -442,6 +522,8 @@ For detailed documentation of all functions, methods, and utilities, see our com
 
 - 🔥 **Result Core Functions** - `success`, `failure`, `tryCatch`, `all`
 - 🔧 **Result Methods** - `.map()`, `.flatMap()`, `.fold()`, `.unwrap()`
+- 🔄 **Conditional Execution** - `.if().then().else()` for chainable conditionals
+- 🎭 **Pattern Matching** - `.match()` with guards and destructuring
 - 📊 **Array Utilities** - `map`, `filter`, `reduce`, `head`, `tail`, `get`
 - 🎯 **Object Utilities** - `prop`, `pick`, `omit`, `getPath`, `mapValues`, `clone`
 - 🔄 **Function Composition** - `curry`, `compose`, `pipe`, `composeAsync`

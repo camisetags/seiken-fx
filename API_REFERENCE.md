@@ -11,6 +11,7 @@ Complete reference for all functions and utilities in seiken-fx.
 - [Function Composition](#function-composition)
 - [Promise Integration](#promise-integration)
 - [Type Definitions](#type-definitions)
+- [Usage Patterns](#usage-patterns)
 
 ---
 
@@ -168,6 +169,65 @@ Executes the callback if the condition from `.if()` was true. Returns the chain 
 
 ### `.else(callback: (a: A) => void): Result<E, A>`
 Executes the callback if the condition from `.if()` was false, or if the Result is a Failure. Returns the original Result for continued chaining.
+
+### `.match<R>(patterns: MatchPattern<E, A, R>[]): Result<any, R>`
+Elixir-style pattern matching with guards and destructuring. Executes the first matching pattern.
+
+```typescript
+// Basic pattern matching
+result.match([
+  [success, (value: number) => `Number: ${value}`],
+  [failure, (error: string) => `Error: ${error}`]
+]);
+
+// Pattern matching with guards
+result.match([
+  [success, (value: number) => value > 10, (value: number) => `Large: ${value}`],
+  [success, (value: number) => value <= 10, (value: number) => `Small: ${value}`],
+  [failure, (error: string) => `Failed: ${error}`]
+]);
+
+// Complex destructuring patterns
+userResult.match([
+  [success, { role: 'admin' }, (user: any) => `Admin: ${user.name}`],
+  [success, { role: 'user' }, (user: any) => `User: ${user.name}`],
+  [failure, (error: string) => `Error: ${error}`]
+]);
+```
+
+### `.try<B>(operation: (value: A) => B): TryChain<E, A, B>`
+Executes an operation that might throw, returning a TryChain for error handling.
+
+```typescript
+success("42").try(parseInt)
+  .catch(error => `Parse failed: ${error}`)
+  .map(value => value * 2);
+// Success(84)
+
+success("invalid").try(parseInt)
+  .catch(error => `Parse failed: ${error}`)
+  .map(value => value * 2);
+// Failure("Parse failed: NaN")
+```
+
+### `.catch<F>(errorHandler: (error: unknown) => F): Result<F, B>`
+Handles errors from the `.try()` operation. Must be called after `.try()`.
+
+```typescript
+// Always returns a Result for continued chaining
+result.try(riskyOperation)
+  .catch(error => `Handled: ${error}`)
+  .map(value => processValue(value));
+```
+
+### `.finally(cleanup: () => void): TryChain<E, A, B>`
+Executes cleanup code and returns the TryChain for continued error handling.
+
+```typescript
+result.try(riskyOperation)
+  .finally(() => console.log('Cleanup executed'))
+  .catch(error => `Handled: ${error}`);
+```
 
 ### `.isSuccess(): boolean`
 Type guard to check if Result is Success.
@@ -474,6 +534,26 @@ if (error) {
 type Result<E, A> = Success<A> | Failure<E>
 ```
 
+### `ConditionalChain<E, A>`
+Chain object for conditional execution with `.if().then().else()`.
+
+```typescript
+class ConditionalChain<E, A> {
+  then(callback: (a: A) => void): ConditionalChain<E, A>;
+  else(callback: (a: A) => void): Result<E, A>;
+}
+```
+
+### `TryChain<E, A, B>`
+Chain object for error handling with `.try().catch()`.
+
+```typescript
+class TryChain<E, A, B> {
+  catch<F>(errorHandler: (error: unknown) => F): Result<F, B>;
+  finally(cleanup: () => void): TryChain<E, A, B>;
+}
+```
+
 ### `Success<A>`
 ```typescript
 class Success<A> {
@@ -554,6 +634,36 @@ const fetchAndProcessUser = async (id: string) => {
     .flatMap(validateUser)
     .map(formatUser);
 };
+```
+
+### Conditional Processing
+```typescript
+const processUser = (user: any) =>
+  success(user)
+    .if(u => u.role === 'admin')
+    .then(u => ({ ...u, permissions: ['read', 'write', 'delete'] }))
+    .else(u => ({ ...u, permissions: ['read'] }))
+    .map(u => logUserAccess(u));
+```
+
+### Pattern Matching
+```typescript
+const categorizeUser = (user: any) =>
+  success(user).match([
+    [success, { role: 'admin' }, (u: any) => `Admin: ${u.name}`],
+    [success, { role: 'user' }, (u: any) => `User: ${u.name}`],
+    [failure, (error: string) => `Error: ${error}`]
+  ]);
+```
+
+### Error Handling with .try().catch()
+```typescript
+const safeParseAndProcess = (input: string) =>
+  success(input)
+    .try(parseInt)
+    .catch(error => `Parse failed: ${error}`)
+    .map(value => value * 2)
+    .flatMap(value => value > 0 ? success(value) : failure("Negative result"));
 ```
 
 ---
