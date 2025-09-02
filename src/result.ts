@@ -7,37 +7,38 @@
 export type Result<E, A> = Success<A> | Failure<E>;
 
 // Pattern matching types for Elixir-style matching
+// Callbacks can return either a value or a Result for better chaining
 export type Pattern<E, A, R> =
-  | [typeof success, (value: A) => R] // Basic success pattern
-  | [typeof success, (value: A) => boolean, (value: A) => R] // Success with guard
-  | [typeof success, object, (value: A) => R] // Success with destructuring
-  | [typeof failure, (error: E) => R]; // Failure pattern
+  | [typeof success, (value: A) => R | Result<E, R>] // Basic success pattern
+  | [typeof success, (value: A) => boolean, (value: A) => R | Result<E, R>] // Success with guard
+  | [typeof success, object, (value: A) => R | Result<E, R>] // Success with destructuring
+  | [typeof failure, (error: E) => R | Result<E, R>]; // Failure pattern
 
 // Type guard to check if a pattern is a destructuring pattern
 function isDestructuringPattern<E, A, R>(
   pattern: Pattern<E, A, R>,
-): pattern is [typeof success, object, (value: A) => R] {
+): pattern is [typeof success, object, (value: A) => R | Result<E, R>] {
   return pattern.length === 3 && pattern[0] === success && typeof pattern[1] === 'object';
 }
 
 // Type guard to check if a pattern is a guard pattern
 function isGuardPattern<E, A, R>(
   pattern: Pattern<E, A, R>,
-): pattern is [typeof success, (value: A) => boolean, (value: A) => R] {
+): pattern is [typeof success, (value: A) => boolean, (value: A) => R | Result<E, R>] {
   return pattern.length === 3 && pattern[0] === success && typeof pattern[1] === 'function';
 }
 
 // Type guard to check if a pattern is a basic success pattern
 function isBasicSuccessPattern<E, A, R>(
   pattern: Pattern<E, A, R>,
-): pattern is [typeof success, (value: A) => R] {
+): pattern is [typeof success, (value: A) => R | Result<E, R>] {
   return pattern.length === 2 && pattern[0] === success;
 }
 
 // Type guard to check if a pattern is a failure pattern
 function isFailurePattern<E, A, R>(
   pattern: Pattern<E, A, R>,
-): pattern is [typeof failure, (error: E) => R] {
+): pattern is [typeof failure, (error: E) => R | Result<E, R>] {
   return pattern[0] === failure;
 }
 
@@ -156,9 +157,9 @@ class Success<A> {
   /**
    * Pattern matching for Elixir-style conditional execution.
    * @param patterns Array of patterns to match against
-   * @returns The result of the first matching pattern
+   * @returns A Result containing the result of the first matching pattern
    */
-  match<R>(patterns: Pattern<any, A, R>[]): R {
+  match<R>(patterns: Pattern<any, A, R>[]): Result<any, R> {
     for (const pattern of patterns) {
       if (isFailurePattern(pattern)) {
         // Skip failure patterns for Success
@@ -167,29 +168,48 @@ class Success<A> {
 
       if (isDestructuringPattern(pattern)) {
         // Pattern with destructuring: [success, object, callback]
-        const [, destructure, callback] = pattern as [typeof success, object, (value: A) => R];
+        const [, destructure, callback] = pattern as [
+          typeof success,
+          object,
+          (value: A) => R | Result<any, R>,
+        ];
         if (this.matchesDestructuring(destructure)) {
-          return callback(this.value);
+          const result = callback(this.value);
+          // If callback returns a Result, return it; otherwise wrap in Success
+          return this.isResult(result) ? result : success(result);
         }
       } else if (isGuardPattern(pattern)) {
         // Pattern with guard: [success, guard, callback]
         const [, guard, callback] = pattern as [
           typeof success,
           (value: A) => boolean,
-          (value: A) => R,
+          (value: A) => R | Result<any, R>,
         ];
         if (guard(this.value)) {
-          return callback(this.value);
+          const result = callback(this.value);
+          // If callback returns a Result, return it; otherwise wrap in Success
+          return this.isResult(result) ? result : success(result);
         }
       } else if (isBasicSuccessPattern(pattern)) {
         // Basic success pattern: [success, callback]
-        const [, callback] = pattern as [typeof success, (value: A) => R];
-        return callback(this.value);
+        const [, callback] = pattern as [typeof success, (value: A) => R | Result<any, R>];
+        const result = callback(this.value);
+        // If callback returns a Result, return it; otherwise wrap in Success
+        return this.isResult(result) ? result : success(result);
       }
     }
 
-    // If no pattern matches, throw an error
-    throw new Error('No matching pattern found');
+    // If no pattern matches, return a Failure
+    return failure(new Error('No matching pattern found'));
+  }
+
+  /**
+   * Helper method to check if a value is a Result.
+   * @param value The value to check
+   * @returns true if the value is a Result
+   */
+  private isResult(value: any): value is Result<any, any> {
+    return value && typeof value === 'object' && '_tag' in value;
   }
 
   /**
@@ -367,19 +387,30 @@ class Failure<E> {
    * Pattern matching for Elixir-style conditional execution.
    * For Failure, only failure patterns are executed.
    * @param patterns Array of patterns to match against
-   * @returns The result of the first matching failure pattern
+   * @returns A Result containing the result of the first matching failure pattern
    */
-  match<R>(patterns: Pattern<E, never, R>[]): R {
+  match<R>(patterns: Pattern<E, never, R>[]): Result<E, R> {
     for (const pattern of patterns) {
       if (isFailurePattern(pattern)) {
         // Execute failure pattern
-        const [, callback] = pattern;
-        return callback(this.error);
+        const [, callback] = pattern as [typeof failure, (error: E) => R | Result<E, R>];
+        const result = callback(this.error);
+        // If callback returns a Result, return it; otherwise wrap in Success
+        return this.isResult(result) ? result : success(result);
       }
     }
 
-    // If no failure pattern matches, throw an error
-    throw new Error('No matching failure pattern found');
+    // If no failure pattern matches, return a Failure
+    return failure(new Error('No matching failure pattern found')) as Result<E, R>;
+  }
+
+  /**
+   * Helper method to check if a value is a Result.
+   * @param value The value to check
+   * @returns true if the value is a Result
+   */
+  private isResult(value: any): value is Result<any, any> {
+    return value && typeof value === 'object' && '_tag' in value;
   }
 }
 

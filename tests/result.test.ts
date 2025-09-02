@@ -288,7 +288,7 @@ describe('Result utilities', () => {
       ]);
 
       expect(mockFn).toHaveBeenCalledWith('hello world');
-      expect(output).toBeUndefined(); // mockFn returns void
+      expect(output.isSuccess()).toBe(true);
     });
 
     it('should execute failure pattern for Failure', () => {
@@ -299,7 +299,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Error: database error');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Error: database error');
     });
 
     it('should execute guard pattern when condition is true', () => {
@@ -311,7 +312,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Large: 15');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Large: 15');
     });
 
     it('should execute guard pattern when condition is false', () => {
@@ -323,7 +325,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Small: 5');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Small: 5');
     });
 
     it('should execute destructuring pattern when object matches', () => {
@@ -336,7 +339,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Adult: John');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Adult: John');
     });
 
     it('should execute destructuring pattern with partial match', () => {
@@ -350,7 +354,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Age: 25');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Age: 25');
     });
 
     it('should execute first matching pattern in order', () => {
@@ -363,26 +368,29 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Large: 15');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Large: 15');
     });
 
-    it('should throw error when no pattern matches', () => {
+    it('should return Failure when no pattern matches', () => {
       const result = success(5);
 
-      expect(() => {
-        result.match([
-          [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
-          [failure, (error: any) => `Error: ${error}`],
-        ]);
-      }).toThrow('No matching pattern found');
+      const output = result.match([
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
+      ]);
+
+      expect(output.isFailure()).toBe(true);
+      expect(() => output.getOrThrow()).toThrow('No matching pattern found');
     });
 
-    it('should throw error when no failure pattern matches', () => {
+    it('should return Failure when no failure pattern matches', () => {
       const result = failure('database error');
 
-      expect(() => {
-        result.match([[success, (value: any) => `Success: ${value}`]]);
-      }).toThrow('No matching failure pattern found');
+      const output = result.match([[success, (value: any) => `Success: ${value}`]]);
+
+      expect(output.isFailure()).toBe(true);
+      expect(() => output.getOrThrow()).toThrow('No matching failure pattern found');
     });
 
     it('should work with complex nested objects', () => {
@@ -413,7 +421,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Dark theme user');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Dark theme user');
     });
 
     it('should work with array patterns', () => {
@@ -426,7 +435,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Short array: 5');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Short array: 5');
     });
 
     it('should handle multiple guard conditions', () => {
@@ -440,7 +450,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Medium: 42');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Medium: 42');
     });
 
     it('should work with string patterns', () => {
@@ -457,7 +468,8 @@ describe('Result utilities', () => {
         [failure, (error: any) => `Error: ${error}`],
       ]);
 
-      expect(output).toBe('Complete: hello world');
+      expect(output.isSuccess()).toBe(true);
+      expect(output.getOrThrow()).toBe('Complete: hello world');
     });
   });
 });
