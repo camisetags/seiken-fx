@@ -3,12 +3,8 @@
  * Success contains the value of type A, while Failure contains an error of type E.
  */
 
-// Extend the Result type to include the if/else methods
-export interface ResultMethods<E, A> {
-  if(f: (a: A) => boolean): ConditionalChain<E, A>;
-  else(f: (e: E) => void): Result<E, A>;
-  match<R>(patterns: Pattern<E, A, R>[]): R;
-}
+// Define the Result type as a union of Success and Failure
+export type Result<E, A> = Success<A> | Failure<E>;
 
 // Pattern matching types for Elixir-style matching
 export type Pattern<E, A, R> =
@@ -46,7 +42,6 @@ function isFailurePattern<E, A, R>(
 }
 
 // Define the Result type
-export type Result<E, A> = Success<A> | Failure<E>;
 
 class Success<A> {
   readonly _tag: 'Success' = 'Success';

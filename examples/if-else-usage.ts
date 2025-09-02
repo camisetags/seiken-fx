@@ -18,13 +18,15 @@ smallNumber
   .then(value => console.log(`✅ Número ${value} é maior que 10`))
   .else(value => console.log(`❌ Número ${value} é menor ou igual a 10`));
 
-// Exemplo 3: Múltiplos .then() encadeados
-console.log('\n3. Múltiplos .then() encadeados:');
+// Exemplo 3: Controle condicional com múltiplas ações
+console.log('\n3. Controle condicional com múltiplas ações:');
 const largeNumber = success(25);
 largeNumber
   .if(value => value > 20)
-  .then(value => console.log(`🎯 ${value} é muito grande!`))
-  .then(value => console.log(`📊 ${value} está na faixa alta`))
+  .then(value => {
+    console.log(`🎯 ${value} é muito grande!`);
+    console.log(`📊 ${value} está na faixa alta`);
+  })
   .else(value => console.log(`📉 ${value} está na faixa baixa`));
 
 // Exemplo 4: Trabalhando com objetos complexos
@@ -60,6 +62,8 @@ errorResult
 // Exemplo 7: Encadeamento com outras operações
 console.log('\n7. Encadeamento com outras operações:');
 const dataResult = success([1, 2, 3, 4, 5]);
+
+// Primeira validação
 dataResult
   .if(array => array.length > 3)
   .then(array => {
@@ -69,26 +73,49 @@ dataResult
   })
   .else(array => {
     console.log(`📊 Array pequeno com ${array.length} elementos`);
-  })
+  });
+
+// Segunda validação após transformação
+const filteredArray = dataResult
   .map(array => array.filter(x => x % 2 === 0))
-  .if(array => array.length > 0)
-  .then(array => console.log(`🔢 Números pares encontrados: ${array}`))
-  .else(() => console.log(`🔢 Nenhum número par encontrado`));
+  .getOrElse([]);
+
+if (filteredArray.length > 0) {
+  console.log(`🔢 Números pares encontrados: ${filteredArray}`);
+} else {
+  console.log(`🔢 Nenhum número par encontrado`);
+}
 
 // Exemplo 8: Validações aninhadas
 console.log('\n8. Validações aninhadas:');
 const productResult = success({ name: 'Laptop', price: 1500, stock: 5 });
+
+// Primeira validação
 productResult
   .if(product => product.price > 1000)
   .then(product => {
     console.log(`💻 ${product.name} é um produto premium`);
-    productResult
-      .if(p => p.stock > 10)
-      .then(p => console.log(`📦 ${p.name} tem estoque alto`))
-      .else(p => console.log(`⚠️  ${p.name} tem estoque baixo (${p.stock} unidades)`));
+    
+    // Segunda validação aninhada
+    if (product.stock > 10) {
+      console.log(`📦 ${product.name} tem estoque alto`);
+    } else {
+      console.log(`⚠️  ${product.name} tem estoque baixo (${product.stock} unidades)`);
+    }
   })
   .else(product => {
     console.log(`💰 ${product.name} é um produto acessível`);
   });
+
+console.log('\n=== Exemplo 9: Chaining .map() antes de .if() ===');
+// ✅ AGORA FUNCIONA! Todos os Results têm .if()
+const numbersResult = success([1, 2, 3, 4, 5]);
+const filteredResult = numbersResult
+  .map(array => array.filter(x => x % 2 === 0))  // ← Retorna Result<never, number[]>
+  .if(array => array.length > 0)                 // ← Funciona! É um Result!
+  .then(array => console.log(`Array com ${array.length} números pares:`, array))
+  .else(() => console.log('Nenhum número par encontrado'));
+
+console.log('Resultado do chaining:', filteredResult);
 
 console.log('\n=== Fim dos exemplos ===');

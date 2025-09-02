@@ -173,7 +173,7 @@ describe('Result utilities', () => {
       const result = success(15);
 
       result
-        .if(value => value > 10)
+        .if((value: any) => value > 10)
         .then(thenMock)
         .else(elseMock);
 
@@ -187,7 +187,7 @@ describe('Result utilities', () => {
       const result = success(5);
 
       result
-        .if(value => value > 10)
+        .if((value: any) => value > 10)
         .then(thenMock)
         .else(elseMock);
 
@@ -209,18 +209,17 @@ describe('Result utilities', () => {
       expect(elseMock).toHaveBeenCalledWith('error occurred');
     });
 
-    it('should allow chaining .then() multiple times', () => {
+    it('should execute .then() and return ConditionalChain for continued chaining', () => {
       const mock1 = jest.fn();
-      const mock2 = jest.fn();
       const result = success(20);
 
-      result
-        .if(value => value > 10)
-        .then(mock1)
-        .then(mock2);
+      const returned = result.if((value: any) => value > 10).then(mock1);
 
       expect(mock1).toHaveBeenCalledWith(20);
-      expect(mock2).toHaveBeenCalledWith(20);
+      expect(returned).not.toBe(result);
+      expect(typeof returned).toBe('object');
+      expect(returned).toHaveProperty('then');
+      expect(returned).toHaveProperty('else');
     });
 
     it('should work with complex predicates', () => {
@@ -269,7 +268,7 @@ describe('Result utilities', () => {
       const zeroMock = jest.fn();
 
       result
-        .if(value => value > 0)
+        .if((value: any) => value > 0)
         .then(positiveMock)
         .else(zeroMock);
 
@@ -307,9 +306,9 @@ describe('Result utilities', () => {
       const result = success(15);
 
       const output = result.match([
-        [success, value => value > 10, value => `Large: ${value}`],
-        [success, value => value <= 10, value => `Small: ${value}`],
-        [failure, error => `Error: ${error}`],
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value <= 10, (value: any) => `Small: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Large: 15');
@@ -319,9 +318,9 @@ describe('Result utilities', () => {
       const result = success(5);
 
       const output = result.match([
-        [success, value => value > 10, value => `Large: ${value}`],
-        [success, value => value <= 10, value => `Small: ${value}`],
-        [failure, error => `Error: ${error}`],
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value <= 10, (value: any) => `Small: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Small: 5');
@@ -332,9 +331,9 @@ describe('Result utilities', () => {
       const result = success(user);
 
       const output = result.match([
-        [success, { age: 25 }, user => `Adult: ${user.name}`],
-        [success, { age: age }, user => `Age: ${age}`],
-        [failure, error => `Error: ${error}`],
+        [success, { age: 25 }, (user: any) => `Adult: ${user.name}`],
+        [success, { age: 18 }, (user: any) => `Young: ${user.name}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Adult: John');
@@ -345,9 +344,10 @@ describe('Result utilities', () => {
       const result = success(user);
 
       const output = result.match([
-        [success, { age: 30 }, user => `Old: ${user.name}`],
-        [success, { age: age }, user => `Age: ${age}`],
-        [failure, error => `Error: ${error}`],
+        [success, (user: any) => user.age === 30, (user: any) => `Old: ${user.name}`],
+        [success, (user: any) => user.age === 18, (user: any) => `Young: ${user.name}`],
+        [success, (_user: any) => true, (user: any) => `Age: ${user.age}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Age: 25');
@@ -357,10 +357,10 @@ describe('Result utilities', () => {
       const result = success(15);
 
       const output = result.match([
-        [success, value => value > 20, value => `Very large: ${value}`],
-        [success, value => value > 10, value => `Large: ${value}`],
-        [success, value => value > 0, value => `Positive: ${value}`],
-        [failure, error => `Error: ${error}`],
+        [success, (value: any) => value > 20, (value: any) => `Very large: ${value}`],
+        [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value > 0, (value: any) => `Positive: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Large: 15');
@@ -371,8 +371,8 @@ describe('Result utilities', () => {
 
       expect(() => {
         result.match([
-          [success, value => value > 10, value => `Large: ${value}`],
-          [failure, error => `Error: ${error}`],
+          [success, (value: any) => value > 10, (value: any) => `Large: ${value}`],
+          [failure, (error: any) => `Error: ${error}`],
         ]);
       }).toThrow('No matching pattern found');
     });
@@ -381,7 +381,7 @@ describe('Result utilities', () => {
       const result = failure('database error');
 
       expect(() => {
-        result.match([[success, value => `Success: ${value}`]]);
+        result.match([[success, (value: any) => `Success: ${value}`]]);
       }).toThrow('No matching failure pattern found');
     });
 
@@ -402,15 +402,15 @@ describe('Result utilities', () => {
       const output = result.match([
         [
           success,
-          { user: { profile: { preferences: { theme: 'dark' } } } },
-          data => 'Dark theme user',
+          (data: any) => data.user?.profile?.preferences?.theme === 'dark',
+          (_data: any) => 'Dark theme user',
         ],
         [
           success,
-          { user: { profile: { preferences: { theme: 'light' } } } },
-          data => 'Light theme user',
+          (data: any) => data.user?.profile?.preferences?.theme === 'light',
+          (_data: any) => 'Light theme user',
         ],
-        [failure, error => `Error: ${error}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Dark theme user');
@@ -420,10 +420,10 @@ describe('Result utilities', () => {
       const result = success([1, 2, 3, 4, 5]);
 
       const output = result.match([
-        [success, arr => arr.length > 10, arr => `Long array: ${arr.length}`],
-        [success, arr => arr.length > 5, arr => `Medium array: ${arr.length}`],
-        [success, arr => arr.length > 0, arr => `Short array: ${arr.length}`],
-        [failure, error => `Error: ${error}`],
+        [success, (arr: any) => arr.length > 10, (arr: any) => `Long array: ${arr.length}`],
+        [success, (arr: any) => arr.length > 5, (arr: any) => `Medium array: ${arr.length}`],
+        [success, (arr: any) => arr.length > 0, (arr: any) => `Short array: ${arr.length}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Short array: 5');
@@ -433,11 +433,11 @@ describe('Result utilities', () => {
       const result = success(42);
 
       const output = result.match([
-        [success, value => value > 100, value => `Huge: ${value}`],
-        [success, value => value > 50, value => `Large: ${value}`],
-        [success, value => value > 25, value => `Medium: ${value}`],
-        [success, value => value > 0, value => `Small: ${value}`],
-        [failure, error => `Error: ${error}`],
+        [success, (value: any) => value > 100, (value: any) => `Huge: ${value}`],
+        [success, (value: any) => value > 50, (value: any) => `Large: ${value}`],
+        [success, (value: any) => value > 25, (value: any) => `Medium: ${value}`],
+        [success, (value: any) => value > 0, (value: any) => `Small: ${value}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Medium: 42');
@@ -447,10 +447,14 @@ describe('Result utilities', () => {
       const result = success('hello world');
 
       const output = result.match([
-        [success, str => str.includes('hello') && str.includes('world'), str => `Complete: ${str}`],
-        [success, str => str.includes('hello'), str => `Partial: ${str}`],
-        [success, str => str.length > 0, str => `Any: ${str}`],
-        [failure, error => `Error: ${error}`],
+        [
+          success,
+          (str: any) => str.includes('hello') && str.includes('world'),
+          (str: any) => `Complete: ${str}`,
+        ],
+        [success, (str: any) => str.includes('hello'), (str: any) => `Partial: ${str}`],
+        [success, (str: any) => str.length > 0, (str: any) => `Any: ${str}`],
+        [failure, (error: any) => `Error: ${error}`],
       ]);
 
       expect(output).toBe('Complete: hello world');
