@@ -394,6 +394,29 @@ const result = categorizeUser({
 // Returns: "Full Admin: Alice (alice@example.com)"
 ```
 
+### Safe Operations with .try().catch()
+
+```typescript
+import { success, failure } from 'seiken-fx';
+
+function processUserInput(input: string) {
+  return success(input)
+    .try(parseInt)
+    .catch(error => `Invalid number: ${error}`)
+    .flatMap(number => {
+      if (number < 0) return failure("Number must be positive");
+      if (number > 100) return failure("Number too large");
+      return success(number);
+    })
+    .map(number => number * 2);
+}
+
+// Usage
+const result1 = processUserInput("42");     // Success(84)
+const result2 = processUserInput("invalid"); // Failure("Invalid number: NaN")
+const result3 = processUserInput("-5");     // Failure("Number must be positive")
+```
+
 ---
 
 ## 🎯 When to Use seiken-fx
@@ -468,6 +491,28 @@ userResult.match([
 ]);
 ```
 
+### 🛡️ **Error Handling with .try().catch()**
+Chainable error handling that enforces proper error management:
+```typescript
+// Safe operations that might throw
+success("42").try(parseInt)
+  .catch(error => `Parse failed: ${error}`)
+  .map(value => value * 2);
+// Success(84)
+
+// Handling exceptions gracefully
+success("invalid").try(parseInt)
+  .catch(error => `Parse failed: ${error}`)
+  .map(value => value * 2);
+// Failure("Parse failed: NaN")
+
+// Complex error handling chains
+userResult
+  .try(user => JSON.stringify(user))
+  .catch(error => `Serialization failed: ${error}`)
+  .flatMap(json => saveToDatabase(json));
+```
+
 ### 🔄 **Dual Promise Integration**
 Unique approach to Promise handling with both Result and tuple patterns:
 ```typescript
@@ -524,6 +569,7 @@ For detailed documentation of all functions, methods, and utilities, see our com
 - 🔧 **Result Methods** - `.map()`, `.flatMap()`, `.fold()`, `.unwrap()`
 - 🔄 **Conditional Execution** - `.if().then().else()` for chainable conditionals
 - 🎭 **Pattern Matching** - `.match()` with guards and destructuring
+- 🛡️ **Error Handling** - `.try().catch()` for chainable error management
 - 📊 **Array Utilities** - `map`, `filter`, `reduce`, `head`, `tail`, `get`
 - 🎯 **Object Utilities** - `prop`, `pick`, `omit`, `getPath`, `mapValues`, `clone`
 - 🔄 **Function Composition** - `curry`, `compose`, `pipe`, `composeAsync`
